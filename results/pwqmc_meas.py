@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# $Id: pwqmc_meas.py,v 1.3 2009-02-02 20:02:37 wirawan Exp $
+# $Id: pwqmc_meas.py,v 1.4 2009-02-05 05:51:39 wirawan Exp $
 #
 # pwaf_meas.py
 # Tools related to PWQMC-77 measurement dump (pwaf-*.meas) files
@@ -142,10 +142,12 @@ class raw_meas_data(object):
   def weighted_avg_op(fld, result = "array"):
     """Batch operator for calculating the weighted averages of the measurement
     records.
+    The specific field to be weight-averaged must be specified in the "fld" argument
+    (use "El" for local energy).
     Depending on the "result" setting, it can yield one of the following:
-    - "array": a structured numpy array
-    - "wavg":  a tuple containing weighted average of the "fld" and the sum of
-      all wtwlkr"""
+    - "array": a structured numpy array containing the weight-averages from each record
+    - "wavg":  a tuple containing the global weighted average and the sum of all the
+      weights (wtwlkr)"""
     if result == "array":
       global_op = \
           lambda arr: numpy.array(arr, dtype=[(fld, "=f8"), ("wtwlkr", "=f8")])
@@ -515,10 +517,10 @@ class meas_hdf5(object):
       self.create_new()
     self.raw_open(self.default_raw_group)
 
-  def close(self):
+  def close(self, debug=1):
     '''Closes a previously opened HDF5 measurement database.'''
     if hasattr(self, "dbh5"):
-      print "closing hdf5 database " + self.dbh5.name
+      if debug: print "closing hdf5 database " + self.dbh5.name
       self.dbh5.close()
       delattr(self, "dbh5")
     # We must also close circular reference to itself via "raw" reference:
@@ -783,8 +785,9 @@ def convert_meas_to_hdf5(output, H0 = 0, files = None, **opts):
     and use that information to optimize the storage use and layout.
     This can be a very long operation if the files are large or many.
   . nmeas_counts: provides the number of measurement points in each record.
-    Usually this is not necessary as it can be provided via optimize()
-    above.
+    This is an alternate way to optimize the file layout and size.
+    Usually this is not necessary as it can be provided automatically via
+    the optimize option.
   '''
   global hdf5_conv_last
   from glob import glob
