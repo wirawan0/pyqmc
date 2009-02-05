@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# $Id: check_reblocking.py,v 1.1 2009-01-09 22:06:16 wirawan Exp $
+# $Id: check_reblocking.py,v 1.2 2009-02-05 05:56:36 wirawan Exp $
 #
 # check_reblocking.py
 # Python implementation of my famous "check_reblocking" tool.
@@ -23,8 +23,20 @@ E_BLK_AVG = 5
 E_BLK_STDDEV = 6
 E_BLK_ERR = 7
 
+check_reblocking_type = \
+    numpy.dtype([
+    ('ndata', '=i4'),
+    ('blksize', '=i4'),
+    ('reblk_ndata', '=i4'),
+    ('uptot', '=f8'),
+    ('downtot', '=f8'),
+    ('Eavg', '=f8'),
+    ('Estddev', '=f8'),
+    ('Eerr', '=f8'),
+    ])
+
 def check_reblocking(wtwlkr, El, reblk_sizes, print_out = False, \
-  print_timing = False, plot_out = False, El_caps = None):
+  print_timing = False, plot_out = False, format = 1): # , El_caps = None):
   '''Performs reblocking check.
 
   El_caps is an optional 2-number tuple which specifies the minimum and maximum
@@ -35,6 +47,9 @@ def check_reblocking(wtwlkr, El, reblk_sizes, print_out = False, \
   (ndata, blksize, reblk_nblk, uptot, downtot, E_blk_avg, E_blk_stddev, E_blk_err)
 
   The list entries correspond to the block sizes in reblk_sizes input array.
+
+  Option plot_out can be true for default (dumb text) plotting, or an existing
+  Gnuplot.Gnuplot() instance.
   '''
   from numpy import array, sqrt
   from time import clock
@@ -47,6 +62,7 @@ def check_reblocking(wtwlkr, El, reblk_sizes, print_out = False, \
   El_w = array(El) * wtwlkr
   ndata = El_w.shape[0]
 
+  '''# --- This capping should not have been done here!
   if El_caps != None:
     (El_min, El_max) = El_caps
     ncap_lo = 0
@@ -62,6 +78,7 @@ def check_reblocking(wtwlkr, El, reblk_sizes, print_out = False, \
     if ncap_hi > 0 or ncap_lo > 0:
       print "Total %d elements capped: %d too high, %d too low" % \
         (ncap_hi + ncap_lo, ncap_hi, ncap_lo)
+  '''
 
   Rslt = []
   errbars = []
@@ -98,8 +115,12 @@ def check_reblocking(wtwlkr, El, reblk_sizes, print_out = False, \
     errbars.append(E_blk_err)
 
   if plot_out:
-    g = Gnuplot.Gnuplot()
-    g("set term dumb")
+    ddd = dir(plot_out)
+    if 'splot' in ddd and 'gnuplot' in ddd:  # a Gnuplot.Gnuplot() instance?
+      g = plot_out
+    else:
+      g = Gnuplot.Gnuplot()
+      g("set term dumb")
     d = Gnuplot.Data(reblk_sizes, errbars, with_ = "linespoints")
     g.plot(d)
 
@@ -112,4 +133,7 @@ def check_reblocking(wtwlkr, El, reblk_sizes, print_out = False, \
     clk2 = clock()
     print "total time = %.4f secs" % (clk2 - clk1)
 
-  return Rslt
+  if format == 0:  # legacy format: no array-izing
+    return Rslt
+  else:
+    return numpy.array(Rslt, dtype=check_reblocking_type)
