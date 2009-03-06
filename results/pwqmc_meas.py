@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# $Id: pwqmc_meas.py,v 1.4 2009-02-05 05:51:39 wirawan Exp $
+# $Id: pwqmc_meas.py,v 1.5 2009-03-06 16:48:06 wirawan Exp $
 #
 # pwaf_meas.py
 # Tools related to PWQMC-77 measurement dump (pwaf-*.meas) files
@@ -12,6 +12,7 @@
 import sys
 import time
 import weakref
+import math
 
 #import tables # HDF5-based tables--nice, but not quite...
 import h5py # HDF5 Python API
@@ -58,7 +59,9 @@ class raw_meas_view_flat(list):
 # Predefined batch operations:
 class batch_op(object):
   nop_global = lambda x: None  # a no-op for global level
+  nop_global = staticmethod(nop_global)
   gather_global = lambda x: x  # a pass-through filter to get the intermediate list
+  gather_global = staticmethod(gather_global)
 
   @staticmethod
   def max_field(fld):
@@ -74,6 +77,8 @@ class batch_op(object):
       ( lambda rec: numpy.min(getattr(rec, fld)) ),
       ( lambda rec: numpy.min(rec) )
     )
+
+#batch_op.nop_global = lambda x: None  # a no-op for global level
 
 
 class raw_meas_data(object):
@@ -147,7 +152,9 @@ class raw_meas_data(object):
     Depending on the "result" setting, it can yield one of the following:
     - "array": a structured numpy array containing the weight-averages from each record
     - "wavg":  a tuple containing the global weighted average and the sum of all the
-      weights (wtwlkr)"""
+      weights (wtwlkr)
+    - "wavg+err": like "wavg", but there is an additional field in the tuple, which is
+      the error estimate of the mean."""
     if result == "array":
       global_op = \
           lambda arr: numpy.array(arr, dtype=[(fld, "=f8"), ("wtwlkr", "=f8")])
@@ -156,6 +163,13 @@ class raw_meas_data(object):
           lambda arr: numpy.average([ a[0] for a in arr ],
                                     weights=[ a[1] for a in arr ],
                                     returned=True)
+    elif result == "wavg+err":
+      global_op = \
+          lambda arr: numpy.average([ a[0] for a in arr ],
+                                    weights=[ a[1] for a in arr ],
+                                    returned=True) + \
+                      (numpy.std([ a[0] for a in arr ]) / math.sqrt(len(arr) - 1),)
+      # Using sqrt(len(arr)-1) to compensate the biased estimate in numpy.std ^^^
     else:
       raise ValueError, "Invalid result type for weighted_avg_op: " + result
 
@@ -216,7 +230,7 @@ class raw_meas_hdf5(object):
                  reserve_size = None):
     '''Appends a new row on the measurement record.
     The select_row option makes the newly created row as the current row.
-    The rserve_columns option makes space for at least
+    The reserve_columns option makes space for at least
     Returns the integer index of the new measurement row.'''
     self.check_alive()
     g = self.raw_group
@@ -479,6 +493,105 @@ class raw_meas_hdf5(object):
       rec.meta = m
 
     return rslt
+
+  def get_raw_object(self, src_raw):
+    # No support for derived class yet :-(
+    if type(src_raw) == meas_hdf5:
+      src_raw = src_raw.raw
+    elif type(src_raw) == h5py.highlevel.Group:
+      src_raw = src_raw['raw']
+    elif type(src_raw) != raw_meas_hdf5:
+      raise ValueError, \
+          "Don't know how to handle object of type " + str(type(src_raw))
+    return src_raw
+
+  def compare_metadata(self, src_raw, verbose=0):
+    '''Compares metadata from another raw_meas_hdf5 object to see if it
+    matches the signature of this object.'''
+
+    mismatch = 0
+    src_raw = self.get_raw_object(src_raw)
+    thisjob = self.job()
+    thatjob = src_raw.job()
+    thismeta = thisjob.attrs
+    thatmeta = thatjob.attrs
+    for key in ['System', 'H0', 'deltau', 'Evar', 'units', 'kptstr',
+                'GeomCode', 'wsvol']:
+      if thismeta[key] != thatmeta[key]:
+        mismatch += 1
+        if verbose:
+          if mismatch == 1:
+            print "Mismatch(es) found in raw_meas_hdf5 metadata (this <-> other):"
+          print "*", key, ":", thismeta[key], "<=>", thatmeta[key]
+    return mismatch
+
+  def append_raw_records(self, src, warn_meta_mismatch = None, debug=0):
+    '''Appends raw measurement records from another database's raw records.
+    The src must be a raw_meas_hdf5 object.'''
+
+    src = self.get_raw_object(src)
+
+    if warn_meta_mismatch == None:
+      warn_meta_mismatch = sys.stdin.isatty()
+
+    if debug >= 1:
+      print "Appending raw records from file ", src.parent().dbh5.name, \
+            "to", self.parent().dbh5.name
+
+    Cmp = self.compare_metadata(src, verbose=1)
+    if not Cmp:
+      pass # OK, can append
+    elif warn_meta_mismatch:
+      print "This database = ", self.parent().dbh5.name
+      print "That database = ", src.parent().dbh5.name
+      print "append_raw_meas_data: Do you still want to continue appending records? [y/n]",
+      ans = sys.stdin.readline().strip().lower()
+      if not ans.startswith("y"):
+        return False
+    else:
+      raise ValueError, "Metadata mismatch"
+
+    #beta0 = self.meta['beta'][self.row_count()-1]
+    meta_names = self.parent().raw_meta_dtype.names
+
+    jobmeta = self.job().attrs
+    itv_Em = jobmeta['itv_Em']
+    nblkstep = jobmeta['nblkstep']
+    last_dest_meta = self.meta[self.row_count()-1]
+    dest_m = dict(zip(meta_names, last_dest_meta))
+    beta0 = dest_m['beta']
+    iblk = dest_m['iblk']
+    imeas = dest_m['imeas']
+    for src_row in xrange(src.row_count()):
+      src.select_row(src_row)
+      src_meta = src.meta[src_row]
+      m = dict(zip(meta_names, src_meta))  # -- can't update new meta
+      # FIXME: must be able to start at an existing dest row (i.e. "overwrite
+      # mode"), rather than always appending at the end.
+      # FIXME: must be able to delete rows if final(ndata) < nrows (dest original value)
+      # FIXME: for now we assume the appended recs are from measurement phase
+      # thus we continue the blocking param rather than using the existing ones
+      # FIXME: still can't do incommensurate measurement interval
+      src_ndata = m['count']
+
+      imeas += itv_Em
+      if imeas > nblkstep:
+        iblk += 1
+        imeas -= nblkstep
+
+      if debug >= 100:
+        print "append_row #", src_row, ":", \
+            (iblk, imeas, m['beta'] + beta0, m['stage'], src_ndata)
+      self.append_row(iblk, imeas, \
+                      beta=m['beta'] + beta0, \
+                      stage=m['stage'], \
+                      select_row=True, reserve_size=src_ndata)
+
+      self.row_append_meas(src.E_l[src_row, 0:src_ndata],
+                           src.wtwlkr[src_row, 0:src_ndata],
+                           src.proc[src_row, 0:src_ndata])
+
+    self.parent().flush()
 
 class meas_hdf5(object):
   # These static fields are put here instead of in the raw_meas_hdf5
