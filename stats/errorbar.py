@@ -1,4 +1,4 @@
-# $Id: errorbar.py,v 1.1 2009-01-09 22:06:16 wirawan Exp $
+# $Id: errorbar.py,v 1.2 2009-06-18 15:42:19 wirawan Exp $
 #
 # Module pyqmc.stats.errorbar
 # Errorbar text handling for Python
@@ -26,7 +26,9 @@ class regexp__aux(object):
     # object and its associated function to extract the value/errbar pair
     # (as a tuple) from the re.Match object.
     #
-    # Standard errorbar matcher (errorbar in parantheses)
+    # Standard errorbar matcher (errorbar in parantheses), in the form of a tuple
+    # The first element of the matcher is a regexp matcher object, and the
+    # second element is
     R.errbar = \
       (
         re.compile(r"([-+]?\d+)"    # leading digits with optional sign
@@ -39,8 +41,7 @@ class regexp__aux(object):
                     # - and account for decimal digits (if any)
                     float(M.group(3)) * float("1"+M.group(4)) * 10**(-max(len(M.group(2))-1, 0)) )
       )
-    # Later additional matchers can be added
-
+    # Later additional matchers can be added here
     R.init = True
 
   @staticmethod
@@ -50,15 +51,23 @@ class regexp__aux(object):
     return R
 
   @staticmethod
-  def match(matcher, Str, rslt):
+  def match(matcher, Str, rslt, flatten=False):
+    '''Matches the string `Str' against the errorbar regexp pattern in `matcher[0]'.
+    If it matches, the value and error are added to the `rslt' list.
+    Depending on whether `flatten' is True or not, it is added as a tuple or as
+    two elements, respectively, into the `rslt' list.'''
+    # Note: matcher is an object like R.errbar above.
     m = matcher[0].match(Str)
     if m:
-      rslt.append(matcher[1](m))
+      if flatten:
+        rslt.extend(matcher[1](m))
+      else:
+        rslt.append(matcher[1](m))
       return True
     else:
       return False
 
-def expand(obj):
+def expand(obj, convert_float=False, flatten=False):
   '''Expands compressed errorbar notation to two consecutive numbers
   (returned as a tuple).
 
@@ -67,8 +76,9 @@ def expand(obj):
   Output:
   The list element that has the format of "VAL(ERR)" (or its scientific
   format twist) will be expanded into two numbers in the output list.
-  All other elements will be converted to floats and passed "as is" to the
-  output.
+  All other elements will be passed "as is" to the output.
+  Optionally, the non-float items can be force-converted to floats if
+  the convert_float is set to True.
   '''
   if getattr(obj, "__iter__", False):
     iterable_inp = True
@@ -88,12 +98,16 @@ def expand(obj):
       # Assume a string!
       o = o.strip()
       #m = rgx.errbar.match(o)
-      if (rgx.match(rgx.errbar, o, rslt)):
+      if (rgx.match(rgx.errbar, o, rslt, flatten)):
         #print "match: errbar"
         pass
+      elif convert_float:
+        # Convert to float right away, store into the `rslt' list
+        rslt.append(float(o))
+        #rslt.append( (float(o),) )
       else:
-        # Convert to float right away; store as 1-tuple instead of
-        # 2-tuple
-        rslt.append( (float(o),) )
+        # Unless otherwise requested, the object will not be converted
+        # to float:
+        rslt.append(o)
   return rslt
 
