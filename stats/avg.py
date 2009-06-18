@@ -14,6 +14,7 @@ class avg(object):
     self.sum1 += value
     self.sum2 += value*value
     return self
+  #__add__ = add  << HERETICAL!!!
   def mean(self):
     return self.sum1 / self.N
   def stddev(self):
