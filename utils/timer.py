@@ -1,4 +1,4 @@
-# $Id: timer.py,v 1.1 2009-06-12 15:06:50 wirawan Exp $
+# $Id: timer.py,v 1.2 2010-02-02 16:13:22 wirawan Exp $
 #
 # timer.py
 # Simple timer and possibly other timing-related routine
@@ -6,6 +6,8 @@
 # Wirawan Purwanto
 # Created: 20081022
 #
+import time
+
 class timer:
   '''A small timer class.'''
   def start(self):
