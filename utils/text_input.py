@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# $Id: text_input.py,v 1.1 2009-06-12 15:06:50 wirawan Exp $
+# $Id: text_input.py,v 1.2 2010-02-02 16:12:57 wirawan Exp $
 #
 # pyqmc.utils.text_input module
 # Quick-n-dirty text input utilities
@@ -10,6 +10,10 @@
 # Routines put here are commonly used in my own scripts.
 # They are not necessarily suitable for general-purpose uses; evaluate
 # your needs and see if they can them as well.
+#
+# TODO
+# - book-keep the line number. Also note superfile must have its own line
+#   number keeping.
 #
 
 import re
@@ -40,11 +44,14 @@ class text_input(object):
     # field_filtering_proc field can be used to filter unwanted fields, or do
     # some additional transformations before final feed to the main iteration.
     self.field_filtering_proc = lambda flds : flds
+    # Default fancy options:
+    self.skip_blank_lines = True
     if len(opts) > 0:
       self.set_options(**opts)
 
   def __del__(self):
-    self.file.close()
+    if getattr(self, "file"):
+      self.file.close()
 
   def __iter__(self):
     return self
@@ -63,7 +70,7 @@ class text_input(object):
     while True:
       L = self.file.next()
       F = self.field_filtering_proc(L.split("#")[0].split())
-      if len(F) > 0:
+      if len(F) > 0 or not self.skip_blank_lines:
         return F
 
   def next_line(self):
@@ -71,7 +78,7 @@ class text_input(object):
     while True:
       L = self.file.next()
       F = self.field_filtering_proc(L.split("#")[0].rstrip())
-      if len(F) > 0:
+      if len(F) > 0 or not self.skip_blank_lines:
         return F
 
   # Do NOT touch the "next" field below unless you know what you're doing:
@@ -79,7 +86,9 @@ class text_input(object):
 
   def seek_text(self, regex=None, match=None):
     '''Seeks the file until a particular piece text is encountered.
-    We ignore all comments.'''
+    We ignore all comments.
+    The `regex' argument can be either a regex string or a standard python
+    regular expression object.'''
 
     if regex:
       if isinstance(regex, str):
@@ -130,6 +139,9 @@ class text_input(object):
     If the tuple contains the third field, it is used as the name of the field;
     otherwise the fields are named f0, f1, f2, ....
 
+    Additional keyword options:
+    * deftype: default datatype
+    * maxcount: maximum number of records to be read
 
     TODO: Needs ability to read in complex data.
     """
@@ -156,7 +168,7 @@ class text_input(object):
     #print flds
     get_fields = lambda vals : tuple([ vals[col] for col in cols ])
     if "maxcount" in kwd:
-      print "hello"
+      #print "hello"
       rslt = [ get_fields(vals.split()) for (c,vals) in zip(xrange(kwd['maxcount']),self) ]
     else:
       rslt = [ get_fields(vals.split()) for vals in self ]
@@ -169,6 +181,8 @@ class text_input(object):
     for (o,v) in opts.iteritems():
       if o == "expand_errorbar":
         self.expand_errorbar(v)
+      if o == "skip_blank_lines":
+        self.skip_blank_lines = v
       else:
         raise "ValueError", "Invalid option: %s" % (o,)
     return self
