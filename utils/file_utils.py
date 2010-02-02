@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# $Id: file_utils.py,v 1.1 2009-06-12 15:06:50 wirawan Exp $
+# $Id: file_utils.py,v 1.2 2010-02-02 16:11:53 wirawan Exp $
 #
 # pyqmc.utils.file_utils module
 # File-manipulation utilities
@@ -16,7 +16,11 @@ import bz2
 import glob
 import gzip
 import os
-import subprocess
+try:
+  import subprocess
+  has_subprocess = True
+except:
+  has_subprocess = False
 
 
 class super_file(object):
@@ -52,8 +56,11 @@ def open_input_file(fname, superize=0):
     fobj = gzip.GzipFile(fname, "r")
   elif fname.endswith(".lzma"):
     # until lzma has a "standard" python module, we use "lzma" executable:
-    px = subprocess.Popen(("lzma", "-dc", fname), stdout=subprocess.PIPE)
-    fobj = px.stdout
+    if has_subprocess:
+      px = subprocess.Popen(("lzma", "-dc", fname), stdout=subprocess.PIPE)
+      fobj = px.stdout
+    else:
+      px = os.popen('lzma -dc "' + fname + '"', "r")
   else:
     fobj = open(fname, "r")
 
