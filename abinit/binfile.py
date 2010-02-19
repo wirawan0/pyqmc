@@ -1,4 +1,4 @@
-# $Id: binfile.py,v 1.1 2010-02-10 23:11:55 wirawan Exp $
+# $Id: binfile.py,v 1.2 2010-02-19 18:46:22 wirawan Exp $
 #
 # pyqmc.abinit.binfile
 #
@@ -11,14 +11,18 @@ import sys
 from wpylib.sugar import ifelse
 from wpylib.iofmt.fortbin import fortran_bin_file
 
+class abinit_psp_rec(object):
+  pass
+
 class abinit_bin_file(fortran_bin_file):
   supported_header = (42, 44, 53, 56, 57)
   int = numpy.int32
   double = numpy.float64
   def open(self, filename):
     self.F = open(filename, "rb")
-  def read_header(self, verbose=100):
-    if verbose:
+  def read_header(self):
+    if self.debug:
+      verbose = self.debug
       def dbg(lvl, msg):
         if lvl > verbose: sys.stderr.write(msg)
     else:
@@ -91,6 +95,7 @@ class abinit_bin_file(fortran_bin_file):
     + ifelse(self.headform >= 57, [('usewvl', Int)], []) \
     + [
     ]
+    dbg(1, "Reading header struct 1: bantot, date, ...\n")
     self.read(*flds, out=self)
 
     """
@@ -135,10 +140,66 @@ class abinit_bin_file(fortran_bin_file):
     + ifelse(self.headform >= 53, [('wtk', Dbl, (self.nkpt))], []) \
     + [
     ]
-    print repr(flds2)
+    #print repr(flds2)
+    dbg(1, "Reading header struct 2: istwfk, nband...\n")
     self.read(*flds2, out=self)
 
-    self.header_fields = [ f[0] for f in flds + flds2 ]
+    """
+  do ipsp=1,npsp
+  ! (npsp lines, 1 for each pseudopotential; npsp=ntypat, except if
+  ! alchemical pseudo-atoms)
+<= 4.2:
+      read (fdWFK) title,znuclpsp,zionpsp,pspso,pspdat,pspcod,pspxc
+
+>= 4.4:
+      read (fdWFK) title,znuclpsp,zionpsp,pspso,pspdat,pspcod,pspxc,lmn_size
+
+    """
+    flds3 = [
+      ('title', 'S132'),
+      ('znuclpsp', Dbl),
+      ('zionpsp', Dbl),
+      ('pspso', Int),
+      ('pspdat', Int),
+      ('pspcod', Int),
+      ('pspxc', Int),
+    ] \
+    + ifelse(self.headform >= 44, [('lmn_size', Int)], []) \
+    + [
+    ]
+    self.psp = []
+    for ipsp in xrange(self.npsp):
+      newpsp = abinit_psp_rec()
+      self.psp.append(newpsp)
+      dbg(1, "Reading psp struct #%d\n" % ipsp)
+      self.read(*flds3, out=newpsp)
+
+    """
+(in case of usepaw==0, final record: residm, coordinates, total energy,
+Fermi energy)
+
+      write(unit=unit) residm,xred(1:3,1:natom),etotal,fermie
+
+    """
+    flds4 = [
+      ('residm', Dbl),
+      ('xred', Dbl, (3, self.natom)),
+      ('etotal', Dbl),
+      ('fermie', Dbl),
+    ]
+    dbg(1, "Reading header struct 4: residm, xred, ...\n")
+    self.read(*flds4, out=self)
+
+    """
+(in case of usepaw==1, there are some additional records)
+
+    """
+    if getattr(self, "usepaw"):
+      raise NotImplementedError, \
+        "usepaw!=0 has another header block; its reading is still unimplemented."
+
+    self.header_fields = [ f[0] for f in flds + flds2 + flds4 ]
+    self.header_fields_psp = [ f[0] for f in flds3 ]
 
 
   def print_header(self, out=sys.stdout):
@@ -158,6 +219,14 @@ class abinit_bin_file(fortran_bin_file):
       dump(f)
     #read(fdWFK) codvsn,headform,fform
 
+  def load_density(self):
+    """Loads the density data after the header.
+    This is for the 'O_DEN' output file.
+    Only supports real densities right now. (FIXME)
+    """
+    fftsize = (self.ngfft[0],self.ngfft[1],self.ngfft[2])
+    self.read(('rhor', self.double, fftsize), out=self)
+    return self.rhor
 
 
 class abinit_density_file(abinit_bin_file):
