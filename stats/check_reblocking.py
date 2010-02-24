@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# $Id: check_reblocking.py,v 1.2 2009-02-05 05:56:36 wirawan Exp $
+# $Id: check_reblocking.py,v 1.3 2010-02-24 15:20:53 wirawan Exp $
 #
 # check_reblocking.py
 # Python implementation of my famous "check_reblocking" tool.
@@ -97,7 +97,10 @@ def check_reblocking(wtwlkr, El, reblk_sizes, print_out = False, \
 
     E_blk_avg = reblk_E.mean()
     # We must use unbiased variance & stddev:
-    E_blk_stddev = reblk_E.std() * sqrt(reblk_nblk / (reblk_nblk-1.0))
+    if reblk_nblk > 1:
+      E_blk_stddev = reblk_E.std() * sqrt(reblk_nblk / (reblk_nblk-1.0))
+    else:
+      E_blk_stddev = 0
     E_blk_var = E_blk_stddev**2
     # reblk_E.std()**2 * reblk_nblk / (reblk_nblk-1)
     E_blk_err = E_blk_stddev / sqrt(reblk_nblk)
