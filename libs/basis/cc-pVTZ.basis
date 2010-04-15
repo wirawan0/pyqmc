@@ -1,5 +1,5 @@
 # PyQMC basis library.
-# $Id: cc-pVTZ.basis,v 1.1 2010-02-01 21:23:03 wirawan Exp $
+# $Id: cc-pVTZ.basis,v 1.2 2010-04-15 22:21:15 wirawan Exp $
 # Easily importable from PNL BSE, modified from GAMESS format.
 
 BSE v1.2.2
@@ -17,6 +17,7 @@ BSE v1.2.2
 # Ga - Kr: A.K. Wilson, D.E. Woon, K.A. Peterson, T.H. Dunning, Jr., J. Chem. Phys., 110, 7667 (1999)
 #
 
+# BASIS SET: (5s,2p,1d) -> [3s,2p,1d]
 Spec: H
 S   3
   1     33.8700000              0.0060680
@@ -34,6 +35,7 @@ D   1
   1      1.0570000              1.0000000
 .
 
+# BASIS SET: (20s,14p,6d,1f) -> [6s,5p,3d,1f]
 Spec: Ca
 S   18
   1 2402654.0000000             0.00000931
