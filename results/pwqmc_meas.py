@@ -1,18 +1,19 @@
 #!/usr/bin/python
-# $Id: pwqmc_meas.py,v 1.6 2009-06-16 15:52:17 wirawan Exp $
+# $Id: pwqmc_meas.py,v 1.7 2010-05-04 21:35:17 wirawan Exp $
 #
-# pwaf_meas.py
-# Tools related to PWQMC-77 measurement dump (pwaf-*.meas) files
+# pwqmc_meas.py
+# Tools related to PWQMC-77 measurement dump (pwaf-*.ene) files
 #
 # Wirawan Purwanto
 # Created: 20081022
 #
 
 # Python standard modules
+import math
+import os
 import sys
 import time
 import weakref
-import math
 
 #import tables # HDF5-based tables--nice, but not quite...
 import h5py # HDF5 Python API
@@ -23,11 +24,14 @@ from pyqmc.utils.timer import timer
 class raw_meas_rec(object):
   """Raw measurement record from one of the "load" functions.
   This class holds the basic record, which contains the array of El and
-  wtwlkr data."""
+  wtwlkr data.
+  Generally this holds the measurement data from a population snapshot."""
   def __init__(self, El, wtwlkr):
     self.El = El
     self.wtwlkr = wtwlkr
     self.ndata = len(El)
+  def __len__(self):
+    return self.ndata
 
 
 class raw_meas_view_blk(dict):
@@ -74,17 +78,31 @@ class batch_op(object):
 
 class raw_meas_data(object):
   """Object for holding raw measurement records returned by one of
-  the "load" functions.
+  the "load" functions of the raw_meas_hdf5 object.
+  This object holds an in-memory array of the data; updating the data will
+  not update the HDF5 file from which the data has been taken.
+
   There are two ways of accessing the data: one is using iblk/imeas view,
   and another using flat view (no blocking)."""
-  def __init__(self):
-    self.blk = raw_meas_view_blk()
+  def __init__(self, blkview=True):
+    """
+    If blkview is False, then no hierarchical iblk/imeas view is possible.
+    """
+    if blkview:
+      self.blk = raw_meas_view_blk()
     self.flat = raw_meas_view_flat()
   def add(self, iblk, imeas, El, wtwlkr):
     rec = raw_meas_rec(El, wtwlkr)
-    self.blk.add(iblk, imeas, rec)
+    if "blk" in dir(self):
+      self.blk.add(iblk, imeas, rec)
     self.flat.add(rec)
     return rec
+  def make_flat_section(self, Range):
+    '''Returns a section of the raw_meas_data. Range is a slice object for the
+    flat array.'''
+    rslt = raw_meas_data(blkview=False) # FIXME: add this later
+    rslt.flat.extend(self.flat[Range]) # DIRTY HACK
+    return rslt
   def __getitem__(self, idx):
     '''Accesses a given measurement record. For now, it supports the
     following ways of indexing:
@@ -93,15 +111,24 @@ class raw_meas_data(object):
     object[iblk,:] -- accesses the "iblk"-th block in the blk view.
     object[iblk,imeas] -- accesses the [iblk][imeas] record in the blk view.
 
-    No slicing is supported right now.
+    Primitive slicing is supported, but the resulting record will lose its
+    block hierarchy (FIXME):
+
+    object[start:stop:step]  -- returns the corresponding slice of flat view,
+          returned as another raw_meas_data object.
     '''
-    if type(idx) == int:
+    if isinstance(idx, int):       # flat view
       return self.flat[idx]
-    elif type(idx) == tuple:
+    elif isinstance(idx, slice):   # slice of flat view
+      return self.make_flat_section(idx)
+    elif isinstance(idx, tuple):   # iblk,imeas view
+      if "blk" not in dir(self):
+        raise IndexError, \
+          "Hierarchical iblk/imeas view is not possible with this viewer instance."
       (iblk,imeas) = idx
-      if type(imeas) == slice:
+      if isinstance(imeas, slice): # disregarded
         return self.blk[iblk]
-      elif type(imeas) == int:
+      elif isinstance(imeas, int):
         return self.blk[iblk][imeas]
     raise IndexError, "Invalid way of referring to a measurement record."
   def batch_operate(self, ranges, op, global_op = None):
@@ -124,6 +151,7 @@ class raw_meas_data(object):
   def ndata(self):
     """Returns the number of records in the flat view."""
     return len(self.flat)
+  __len__ = ndata
   def all_recs(self):
     """A shortcut to refer to all records in the flat view. For use with
     batch_operate."""
@@ -365,25 +393,27 @@ class raw_meas_hdf5(object):
   def row_append_meas(self, E_l, wtwlkr, proc):
     '''Appends measurement data into the current row. All input arrays must have
     the same dimensionality.'''
+    # TODO FIXME: Remove the staging arrays if E_l and all the other arrays are
+    # already the correct numpy array with same dtype.
     self.check_alive()
-    E_l_ = numpy.array(E_l, dtype='=c16')
+    E_l_ = numpy.array(E_l, dtype=self.E_l.dtype)
 
     if getattr(wtwlkr, "__iter__", False):
-      wtwlkr_ = numpy.array(wtwlkr, dtype='=f8')
+      wtwlkr_ = numpy.array(wtwlkr, dtype=self.wtwlkr.dtype)
       if E_l_.shape != wtwlkr_.shape:
         raise TypeError, "wtwlkr array has different dimensionality from E_l"
     else:
       # Assume scalar; use broadcasting
-      wtwlkr_ = numpy.empty(E_l_.shape, dtype='=f8')
+      wtwlkr_ = numpy.empty(E_l_.shape, dtype=self.wtwlkr.dtype)
       wtwlkr_[:] = wtwlkr
 
     if getattr(proc, "__iter__", False):
-      proc_ = numpy.array(proc, dtype='=i4')
+      proc_ = numpy.array(proc, dtype=self.proc.dtype)
       if E_l_.shape != proc_.shape:
         raise TypeError, "proc array has different dimensionality from E_l"
     else:
       # Assume scalar
-      proc_ = numpy.empty(E_l_.shape, dtype='=i4')
+      proc_ = numpy.empty(E_l_.shape, dtype=self.proc.dtype)
       proc_[:] = proc
 
     # Expand the row if necessary:
@@ -417,7 +447,9 @@ class raw_meas_hdf5(object):
     Returns the snapshots of (1) wtwlkr and (2) local energy as a tuple.
 
     Be aware that if the measurement files are large, then the data
-    structure in memory is also very large!'''
+    structure in memory is also very large!
+
+    DEPRECATED ROUTINE. Please use load_meas_data instead!'''
 
     self.check_alive()
     wtwlkr_slices = {}
@@ -438,7 +470,9 @@ class raw_meas_hdf5(object):
 
   def load_meas2(self, stage = None):
     '''Alternate routine to load ALL measurements for a particular stage
-    without regard to the block/index selection.'''
+    without regard to the block/index selection.
+
+    DEPRECATED ROUTINE. Please use load_meas_data instead!'''
     self.check_alive()
     wtwlkr_slices = {}
     El_slices = {}
@@ -464,11 +498,25 @@ class raw_meas_hdf5(object):
       ]
     return (wtwlkr_slices, El_slices, meas_recs)
 
-  def load_meas_data(self, stage=None, match=None):
-    '''Loads ALL measurement records for a given stage
-    without regard to the block/index selection.
-    Returns a raw_meas_data object for convenience.'''
-    rslt = raw_meas_data()
+  def load_meas_data(self, stage=None, match=None, append_to_raw=None):
+    '''Loads measurement records for a given stage (if `stage' is specified) or
+    those matching given record (if `match' is specified).
+
+    The `match' function must accept a dict argument, which contains metadata
+    of the row under consideration.
+    It must return True if the row is to be accepted; False otherwise.
+    Note that `stage' and `match' should not be specified simultaneously.
+    Returns a raw_meas_data object for convenience.
+
+    The `append_to_raw' argument, if given, must be existing raw_meas_data
+    object to which we want to append the dataset.
+    This option is useful, for example, for chaining the raw data from various
+    sequential parts of a QMC run.
+    '''
+    if append_to_raw != None:
+      rslt = append_to_raw
+    else:
+      rslt = raw_meas_data()
     # This way does not give memory advantage:
     #El = numpy.empty((self.E_l.shape[1],), dtype="=f8")
     rows_selected = []
@@ -477,6 +525,7 @@ class raw_meas_hdf5(object):
       m = dict(zip(self.parent().raw_meta_dtype.names, self.meta[row]))
       #print m
       if m['count'] == 0: continue # don't add record w/ zero length
+      m['row'] = row
       if stage != None and m['stage'] != stage: continue
       if match != None and not match(m): continue
       rows_selected.append(row)
@@ -604,6 +653,13 @@ class meas_hdf5(object):
     ('count', '=i4'),
     ('stage', '=i2'),
   ])
+  # Default datatypes for raw structure:
+  raw_dtypes = numpy.dtype([
+    ("E_l", "=c16"),
+    ("wtwlkr", "=f8"),
+    ("proc", "=i4"),
+    ("meta", raw_meta_dtype),
+  ])
   # The default number of data is -1 (<0) as a special marker for the first
   # blank row.
   # stages: 0 = eqlb, 1 = growth, 2 = measurement
@@ -622,14 +678,17 @@ class meas_hdf5(object):
     #  self.raw = None
     self.close()
 
-  def open(self, fname, mode="a"):
+  def open(self, fname, mode="a", create_raw=True):
     '''Opens or creates a HDF5 database containing the PWQMC measurement dump.
     This is a more efficient way of storing the pwaf-*. raw data.'''
     self.close()
     self.dbh5 = h5py.File(fname, mode)
     if "FormatType" not in self.dbh5.attrs.listnames():
-      self.create_new()
-    self.raw_open(self.default_raw_group)
+      self.create_new(create_raw)
+    try:
+      self.raw_open(self.default_raw_group)
+    except:
+      pass
 
   def close(self, debug=1):
     '''Closes a previously opened HDF5 measurement database.'''
@@ -645,7 +704,7 @@ class meas_hdf5(object):
   def flush(self):
     self.dbh5.flush()
 
-  def create_new(self):
+  def create_new(self, create_raw=True):
     '''Creates a new HDF5 structure for a measurement result.'''
     db = self.dbh5
     db.attrs["Creator"] = "pyqmc.results.pwqmc_meas"
@@ -653,13 +712,26 @@ class meas_hdf5(object):
         time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
     db.attrs["FormatVersion"] = 0
     db.attrs["FormatType"] = "pwqmc_meas"
-    db.require_group("job0")
-    self.raw_create(self.default_raw_group)
+    if create_raw:
+      self.create_group_path(self.default_raw_group)
+      self.raw_create(self.default_raw_group)
     db.flush()
 
-  def raw_create(self, path):
+  def create_group_path(self, path):
+    '''Creates HDF5 group and subgroups that form the path.
+    The path must be an absolute path.'''
+    if not path.startswith('/'):
+      raise ValueError, 'The "path" argument must be an absolute path!'
+    paths = path.split('/')
+    # ^ don't include the first part, which must be a slash.
+    # ^ don't include the last (group) part
+    for lpath in xrange(2, len(paths)+1):
+      g = self.dbh5.require_group("/".join(paths[0:lpath]))
+    return g
+
+  def raw_create(self, path, dtypes={}):
     '''Creates a new raw measurement section at absolute group location `path'.'''
-    g = self.dbh5.require_group(path)
+    g = self.create_group_path(path)
     '''
     Notes for arrays E_l, wtwlkr, and proc:
     * these all must have identical dimensions
@@ -669,16 +741,22 @@ class meas_hdf5(object):
     The meta array runs with meas_idx only.
     '''
 
+    def get_dtype(fld):
+      try:
+        return dtypes[fld]
+      except:
+        return self.raw_dtypes[fld]
+
     Chunk = tuple(self.default_raw_chunks)
-    g.create_dataset("E_l", shape=(1, 1), dtype="=c16", \
+    g.create_dataset("E_l", shape=(1, 1), dtype=get_dtype("E_l"), \
         maxshape=(None,None), chunks=Chunk)
-    g.create_dataset("wtwlkr", shape=(1, 1), dtype="=f8", \
+    g.create_dataset("wtwlkr", shape=(1, 1), dtype=get_dtype("wtwlkr"), \
         maxshape=(None,None), chunks=Chunk)
-    g.create_dataset("proc", shape=(1, 1), dtype="=i4", \
+    g.create_dataset("proc", shape=(1, 1), dtype=get_dtype("proc"), \
         maxshape=(None,None), chunks=Chunk)
     # Measurement markers (blk/imeas/ compound):
     meta_blank = self.raw_meta_blank()[0]
-    g.create_dataset("meta", shape=(1,), dtype=self.raw_meta_dtype, \
+    g.create_dataset("meta", shape=(1,), dtype=get_dtype("meta"), \
         maxshape=(None,), chunks=Chunk[0:1])
     g['meta'][0] = meta_blank
     return g
@@ -693,7 +771,10 @@ class meas_hdf5(object):
     if path == None: path = self.default_raw_group
     g = self.dbh5[path]
     raw = raw_meas_hdf5(g, self)
-    self.raw = raw  # last opened raw group (WARNING: circular reference)
+    self.raw = raw  # last opened raw group
+    # (WARNING: circular reference is in raw_meas_hdf5 object; to avoid
+    # circular reference woes, we make the meas_hdf5 reference in the
+    #  raw object "weak".)
     return raw
 
   
@@ -706,7 +787,18 @@ class meas_hdf5(object):
 class meas_text(object):
   '''meas_text is a class for reading the measurement dump produced by
   PWQMC-77 code (i.e. a single pwaf-*.meas or pwaf-*.ene file).
-  The raw dump is in text format.'''
+  The raw dump to be read is in plain text format.
+
+  Additional fields possessed by this object:
+  * proc_rank = MPI rank (read from the dump file)
+  * start_date, start_time = start date and time of the run (read from the
+    dump file)
+  * lastpos = last position of the file pointer. Will be changed whenever
+    (1) a file is just opened, (2) a seek to a section, or (3) a read to
+    a measurement section.
+  * ndata = number of measurement points read by the last read_section call.
+  '''
+
   def __init__(self, fname = None):
     if fname: self.open(fname)
   def __del__(self):
@@ -714,7 +806,8 @@ class meas_text(object):
 
   # Opening and closing input files:
   def open(self, fname):
-    '''Opens a given measurement file for reading and analysis.'''
+    '''Opens a given measurement file for reading and analysis.
+    '''
     self.close()
     self.file = open(fname, "r")
     #self.fname = fname  -- use self.file.name instead
@@ -741,12 +834,18 @@ class meas_text(object):
            L.startswith("GRTH ") or L.startswith("EQLB "):
         F.seek(lastpos)
         break
+    self.lastpos = lastpos
 
   def close(self):
     '''Closes a previously opened measurement file.'''
     if hasattr(self, "file"):
       self.file.close()
       delattr(self, "file")
+      #delattr(self, "lastpos") #!!!
+
+  def rewind(self):
+    self.file.seek(0)
+    self.lastpos = self.file.tell()
 
   def seek_section(self, section, block, index):
     '''Seeks forward a named section with a particular block and index.'''
@@ -759,6 +858,7 @@ class meas_text(object):
       if line.lstrip().startswith(sect):
         flds = line.split()
         if int(flds[1]) == block and int(flds[2]) == index:
+          self.lastpos = F.tell()
           return True
       line = F.readline()
     return False
@@ -797,21 +897,38 @@ class meas_text(object):
           ndata = int(flds[3])
         else:
           ndata = None
+        self.lastpos = F.tell()
         return (stage, block, index, ndata)
       line = F.readline()
     return None
 
-  def read_section(self, section = "MEA", block = 1, index = 1, \
-    fname = None, keep_El_imag = False, H0 = 0):
-    '''Reads energy measurement, one section at a time from a pwaf-*.meas file.
-    Returns a 2-component tuple containing (1) wtwlkr and (2) local energy
-    data.
+  def read_section(self, section=None, block=1, index=1, \
+    fname=None, keep_El_imag=False, keep_phasefac=False, H0=0, out=None):
+    '''Reads energy measurement, one section at a time from a pwaf-*.ene file.
 
-    After the end of this subroutine, the file pointer is positioned to read
-    the next section right after it.
+    On entry:
+    * If section is set to None, then it begins reading the measurement section
+      immediately.
+      Otherwise, section, block, and index arguments must be specified, and
+      the a forward seek to the specified section will be performed beforehand.
+    * if keep_El_imag is True, then the imaginary part of E_l is preserved
+      (thus E_l must be a complex array).
+    * if keep_phasefac is True, then the phase factor is also read (this is only
+      for free projection runs).
+    * H0 is the constant part of the energy.
+    * out, is given, must be a structured numpy array that will contain the
+      result. The dtype must contain:
+      - ('wtwlkr',float)   (complex if keep_phasefac==True)
+      - ('E_l',float)      (complex if keep_El_imag==True)
 
-    If section is set to None, then it begins reading the measurement section
-    immediately.
+    On exit:
+    * The file pointer is positioned to read the immediate next section.
+    * Returns a 2-component tuple containing (1) wtwlkr and (2) local energy
+      data. If out is given, then tuple components point to the corresponding
+      fields in out.
+
+    Valid section names are "EQLB", "GRTH", or "MEAS" (according to the section
+    strings dumped by PWQMC code).
     '''
     if fname != None: self.open(fname)
     if section != None and not self.seek_section(section, block, index):
@@ -819,8 +936,17 @@ class meas_text(object):
         "Cannot seek section " + section + " block " \
         + str(block) + " index " + str(index)
 
-    wtwlkr = []
-    E_l = []
+    if out == None:
+      # Legacy data structure: using lists
+      # This is deprecated; please use the numpy array buffer, which
+      # is better!
+      wtwlkr = []
+      E_l = []
+    else:
+      wtwlkr = out['wtwlkr']
+      E_l = out['E_l']
+
+    count = 0
     F = self.file
     lastpos = F.tell()
     line = F.readline()
@@ -833,16 +959,52 @@ class meas_text(object):
         self.file.seek(lastpos)
         self.next_section = flds
         break
-      wtwlkr.append(float(flds[1]))
-      if (keep_El_imag):
-        E_l.append(complex(float(flds[2]), float(flds[3])) + H0)
+
+      if keep_phasefac:
+        w = complex(flds[1], flds[4])
       else:
-        E_l.append(float(flds[2]) + H0)
+        w = float(flds[1])
+      if keep_El_imag:
+        E = complex(float(flds[2]), float(flds[3])) + H0
+      else:
+        E = float(flds[2]) + H0
+
+      if out == None:
+        wtwlkr.append(w)
+        E_l.append(E)
+      else:
+        wtwlkr[count] = w
+        E_l[count] = E
+
+      count += 1
       lastpos = F.tell()
       line = F.readline()
 
+    self.lastpos = lastpos
+    self.ndata = count
     rslt = (wtwlkr, E_l)
     return rslt
+
+  def make_numpy_buffer(self, size, keep_El_imag=False, keep_phasefac=False):
+    '''Creates a numpy structured array for read_section routine's `out'
+    argument.'''
+    if keep_El_imag:
+      El_type = complex
+    else:
+      El_type = float
+
+    if keep_phasefac:
+      wt_type = complex
+    else:
+      wt_type = float
+
+    if isinstance(size, tuple):
+      sz = size
+    else:
+      sz = (size,)
+
+    return numpy.empty(sz, dtype=[('wtwlkr',wt_type), ('E_l',El_type), ('proc','=i4')])
+
 
 
 def append_array(arr, dest, idx):
@@ -861,14 +1023,13 @@ def load_measurements(blocks, indices, H0 = 0, files = None):
   Returns the snapshots of (1) wtwlkr and (2) local energy as a tuple.
 
   Be aware that if the measurement files are large, then the data structure in
-  memory is also very large!'''
-  from glob import glob
+  memory is also very large!
 
-  if files == None:
-    files = sorted(glob("pwaf-*.meas"))
-  elif type(files) == str:
-    files = sorted(glob(files))
+  DEPRECATED ROUTINE. It is preferrable to convert the *.ene files to HDF5 format
+  then work with the HDF5 database. The analysis tools are more extensively
+  developed for that format!'''
 
+  files = meas_glob(files)
   wtwlkr_slices = {}
   El_slices = {}
   mea_f = meas_text()
@@ -906,15 +1067,16 @@ def convert_meas_to_hdf5(output, H0 = 0, files = None, **opts):
     This is an alternate way to optimize the file layout and size.
     Usually this is not necessary as it can be provided automatically via
     the optimize option.
+  . match: optional subroutine to filter in (or out) the measurement blocks
+    to be included (or excluded) from the measurement phase.
+    The `match' function must accept a hash argument, which contains metadata
+    of the row under consideration.
+    It must return True if the row is to be accepted; False otherwise.
   '''
   global hdf5_conv_last
-  from glob import glob
   from pyqmc.stats.avg import avg
 
-  if files == None:
-    files = sorted(glob("pwaf-*.meas"))
-  elif type(files) == str:
-    files = sorted(glob(files))
+  files = meas_glob(files)
 
   T = timer()
   tm_meas_count = avg()
@@ -947,6 +1109,7 @@ def convert_meas_to_hdf5(output, H0 = 0, files = None, **opts):
   # Reads off optional parameters
   betablk = opts.get('betablk', 0.5)
   deltau = opts.get('deltau', 0.01)
+  match = opts.get('match', None)
 
   tm_readsect = avg()
   tm_find = avg()
@@ -964,6 +1127,15 @@ def convert_meas_to_hdf5(output, H0 = 0, files = None, **opts):
     section = mea_f.seek_any_section()
     while section:
       (stage, iblk, imeas, ndata) = section
+      if match:
+        if not match({'rank': mea_f.proc_rank,
+                      'stage': stage, 'iblk': iblk, 'imeas': imeas,
+                      'count': ndata }):
+          T.start()
+          section = mea_f.seek_any_section()
+          tm_seek += T.stop()
+          continue
+
       #print "read_sect"
       T.start()
       meas = mea_f.read_section(section=None, H0=H0, keep_El_imag=True)
@@ -1027,7 +1199,294 @@ def convert_meas_to_hdf5(output, H0 = 0, files = None, **opts):
   return rslt
 
 
+def convert_meas_to_hdf5_v2(output, H0=0, files=None, **opts):
+  """A master routine to convert measurement across many pwaf-*.meas files to
+  the new hdf5 format.
+  Version 2, with the possibility of data reduction on-the-fly.
+  Data layout is always optimized and contiguous.
+  The conversion will cost a little bit more because of file opening/closing.
+
+  Additional options:
+  . betablk: imaginary time length of a block
+  . deltau: imaginary time step
+  . debug: sets the debug level (default: 0)
+  . debug_out: python file-like object to store/display the debug information
+    (default: sys.stderr)
+  . time: reports the timing at the end of the conversion (default: 0 == no)
+  . keep_El_imag: preserves the imaginary part of E_l (default: True)
+  . keep_phasefac: preserves the complex phase of wtwlkr (default: False)
+  . dataset_group: the HDF5 group to contain the measurement data.
+    If not specified, the default dataset group specified in the HDF5
+    measurement file is used.
+  . value_processor: an optional routine which takes a structured numpy array
+    and cooks the values *in place* before archiving these values in the HDF5
+    database. Useful for preprocessing of the values, like scaling, adding
+    a constant (H0 does that), whatnot.
+    Calling convention:
+      value_processor(<numpy_array>, <metadata_dict>)
+    The array contains the following fields: 'E_l', 'wtwlkr', 'proc'.
+    Don't mess with 'proc' unless youknow what you are doing!
+
+  Hints:
+  . nwlkmax: maximum number of walkers in the measurement
+  . nwlkavg: average number of walkers in the measurement
+  . default_raw_chunks: a 2-tuple, i.e., '(row_chunk_size, pop_chunk_size)'
+    for creating new HDF5 dataset (only used if necessary).
+    measurement file is used.
+    This is useful for defining a more optimal chunking parameter.
+
+  """
+  global hdf5_conv_last  # for debugging
+  from pyqmc.stats.avg import avg
+
+  files = meas_glob(files)
+  numcpu = len(files)
+
+  T = timer()
+  optDebug = opts.get("debug", 0)
+  optTime = opts.get("time", 0)
+  read_blocksize = opts.get("read_blocksize", 5)  # maximum blocks read at once
+  nwlkmax = opts.get("nwlkmax", None)
+  nwlkavg = opts.get("nwlkavg", None)
+  debug_out = opts.get("debug_out", sys.stderr)
+  keep_El_imag = opts.get("keep_El_imag", True)
+  keep_phasefac = opts.get("keep_phasefac", False)
+  valpx = opts.get("value_processor", None)
+
+  # Reads off optional parameters---these defaults better be given explicitly.
+  betablk = opts.get('betablk', 0.5)
+  deltau = opts.get('deltau', 0.01)
+
+  if optDebug:
+    def dbg(level, s):
+      if optDebug >= level:
+        debug_out.write(s)
+        debug_out.flush()
+  else:
+    dbg = lambda level, s: None
+
+  mea_f = meas_text()
+
+  # If nwlkmax is not provided, we will have to estimate the nwlkmax:
+  # This is not a safe or exact measurement, so nwlkmax better be provided.
+  nwlk_proc = []
+  if nwlkmax == None:
+    debug_out.write("Warning: nwlkmax not given, we will estimate it.\n")
+    mea_f.open(files[0])
+    nwlkmax_proc = 0
+    dbg(10, "Sampling file %s...\n" % (files[0]))
+    try:
+      for nrecs in xrange(50):
+        (stage, block, index, ndata) = mea_f.seek_any_section()
+        nwlk_proc.append(ndata)
+    except:
+      nrecs -= 1
+      pass
+    nwlkmax_proc = max(nwlk_proc)
+    dbg(10, "Sampled %d records, got nwlkmax_proc = %d\n" % (nrecs+1, nwlkmax_proc))
+    nwlkmax = (nwlkmax_proc + 1) * numcpu * 2
+    dbg(1, "Estimating nwlkmax = %d\n" % (nwlkmax))
+    del nrecs
+
+    if nwlkavg == None:
+      nwlkavg = int(numpy.mean(nwlk_proc) * numcpu)
+      dbg(1, "Estimating nwlkavg = %d\n" % (nwlkavg))
+  else:
+    if nwlkavg == None:
+      nwlkavg = nwlkmax # FIXME
+
+  if isinstance(output, meas_hdf5):
+    rslt = output
+  else:
+    rslt = meas_hdf5()
+    rslt.open(output, create_raw=False)
+
+  # Must set the chunking parameter here if required:
+  # Set chunk size to ~2% of the avg measurement count, or larger.
+  default_raw_chunks = opts.get("default_raw_chunks", None)
+  if default_raw_chunks != None:
+    rslt.default_raw_chunks = default_raw_chunks
+  dbg(10, "New chunk size = " + str(rslt.default_raw_chunks) + "\n")
+
+  dataset_group = opts.get("dataset_group", rslt.default_raw_group)
+
+  mea_buff = mea_f.make_numpy_buffer((read_blocksize,nwlkmax), \
+                                     keep_El_imag=keep_El_imag, \
+                                     keep_phasefac=keep_phasefac)
+
+  if not dataset_group in rslt.dbh5:
+    rslt.raw_create(path=dataset_group, \
+                    dtypes={'E_l': mea_buff['E_l'].dtype,
+                            'wtwlkr': mea_buff['wtwlkr'].dtype,
+                           })
+  raw_hdf5 = rslt.raw_open(path=dataset_group)
+  hdf5_conv_last = rslt
+
+  tm_readsect = avg()
+  tm_find = avg()
+  tm_append = avg()
+  tm_seek = avg()
+
+  read_size_actual = numpy.zeros((numcpu,), dtype=int)
+  nwlkr = numpy.zeros((read_blocksize,), dtype=int)
+  filepos = [None] * numcpu
+  nread_total = 0
+  nblk = 0
+  while True:
+    read_size_actual[:] = 0
+    nwlkr[:] = 0
+    sect_info = {}
+    dbg(10, "Reading measurement records #%d\n" % (nblk))
+
+    for icpu in xrange(len(files)):
+      fname = files[icpu]
+      mea_f.open(fname)
+      dbg(100, "Opening file %s\n" % (fname))
+      if filepos[icpu] != None:
+        mea_f.file.seek(filepos[icpu])
+        dbg(100, "Seeking to position %d\n" % (filepos[icpu]))
+
+      for iblkread in xrange(read_blocksize):
+        nwlk1 = nwlkr[iblkread]
+        if icpu == 0:
+          sect_info2 = mea_f.seek_any_section()
+          sect_info[iblkread] = sect_info2
+        else:
+          sect_info2 = mea_f.seek_any_section()
+          if sect_info2 != None:
+            # check sect_info2 against sect_info[iblkread]!
+            if sect_info[iblkread][0:3] != sect_info2[0:3]:
+              sys.stderr.write("\n".join([
+                "Wrong section header encountered in file " + mea_f.file.name,
+                "Read header info: " + repr(sect_info2[0:3]),
+                "Wanted: ", repr(sect_info[iblkread][0:3]),
+                "icpu = " + str(icpu),
+                "iblkread = " + str(iblkread),
+              ]))
+              raise RuntimeError, \
+                "Wrong section header encountered in file " + mea_f.file.name
+
+        if sect_info2 == None: break
+        dbg(100, "  section: %s\n" % (str(sect_info2)))
+
+        T.start()
+        mea_f.read_section(keep_El_imag=keep_El_imag, \
+                           keep_phasefac=keep_phasefac, \
+                           H0=H0, out=mea_buff[iblkread, nwlk1:])
+        tm_readsect += T.stop()
+
+        dbg(100, "  read %d data\n" % (mea_f.ndata))
+
+        mea_buff['proc'][iblkread, nwlk1 : nwlk1+mea_f.ndata] = mea_f.proc_rank
+
+        dbg(101, "ndata,lastpos = %d %d" % (mea_f.ndata, mea_f.lastpos))
+        nwlkr[iblkread] += mea_f.ndata
+        filepos[icpu] = mea_f.lastpos
+        read_size_actual[icpu] += 1
+
+      mea_f.close()
+
+    minblkread = numpy.min(read_size_actual)
+    avgblkread = numpy.mean(read_size_actual)
+    maxblkread = numpy.max(read_size_actual)
+
+    if minblkread != maxblkread:
+      dbg(0, "Warning: uneven number of blocks read among processors!\n" + \
+          "Minimum = %d, maximum = %d, average = %.3f\n" % \
+          (minblkread, maxblkread, avgblkread) + \
+          "Only the minimum number of blocks are taken."
+          )
+
+    for iblkread in xrange(minblkread):
+      # add the measurement data to the HDF5 database
+      nwlk1 = nwlkr[iblkread]
+      (stage, iblk, imeas, ndata) = sect_info[iblkread]
+      beta = (iblk - 1) * betablk + imeas * deltau
+      extra_opts = {}
+      # Creates a new measurement row
+      T.start()
+      row = raw_hdf5.append_row(iblk=iblk, imeas=imeas, beta=beta, \
+                                stage=stage, select_row=True, \
+                                **extra_opts)
+
+      if valpx:
+        meta = { # make this like HDF5 metadata for each raw data row.
+          'beta': beta,
+          'stage': stage,
+          'iblk': iblk,
+          'imeas': imeas,
+          'deltau': deltau,
+          'count': nwlk1,
+          'row': row,
+        }
+        valpx(mea_buff[iblkread, 0:nwlk1], meta)
+
+      raw_hdf5.row_append_meas(E_l=mea_buff[iblkread, 0:nwlk1]['E_l'], \
+                               wtwlkr=mea_buff[iblkread, 0:nwlk1]['wtwlkr'], \
+                               proc=mea_buff[iblkread, 0:nwlk1]['proc'])
+      tm_append += T.stop()
+
+    nblk += minblkread
+
+    nread_total += minblkread
+    if minblkread == 0: break
+  # end main loop
+
+  rslt.flush()
+
+  dbg(1, "Total %d measurement blocks read\n" % (nread_total))
+
+  if optTime or optDebug > 100:
+    dbg(0, "read_section = %.3f %d\n" % (tm_readsect(), tm_readsect.N))
+    dbg(0, "append_meas  = %.3f %d\n" % (tm_append(), tm_append.N))
+
+  #raise RuntimeError,"blah"
+  return rslt
+
+
+def meas_glob(files, ext="ene"):
+  '''Do automatic globbing on files: the files can be either a list of filenames,
+  a subdir containing *.ene files, or a glob string.'''
+  from glob import glob
+  if files == None:
+    files = sorted(glob("pwaf-*." + ext))
+  elif isinstance(files, str):
+    if os.path.isdir(files):
+      files = sorted(glob(files + "/pwaf-*." + ext))
+    else:
+      files = sorted(glob(files))
+  return files
+
+
 # TENTATIVE PLACEMENT: this may be out of place:
+def build_meas_index(files, **opts):
+  '''Builds index of measurement data (pwaf-*.ene files).
+  '''
+  optDebug = opts.get("debug", 0)
+  files = meas_glob(files)
+  mea_f = meas_text()
+  for fname in files:
+    if (optDebug): print "Reading", fname
+    mea_f.open(fname)
+    idx_f = open(fname + ".index", "w")
+    idx_f.write(\
+      ["PWQMC measurement data: total energies  __INDEX_FILE__\n",
+       "Process rank " + str(mea_f.proc_rank) + "\n",
+       "", # UNDC HERE
+      ])
+
+    section = mea_f.seek_any_section()
+    while section:
+      (stage, iblk, imeas, ndata) = section
+      key = ",".join( (str(stage), str(iblk), str(imeas)) )
+      if optDebug > 1 and key not in n_meas_data: print "added ", key
+
+
+      section = mea_f.seek_any_section()
+
+  return n_meas_data
+
+
 def get_meas_count(files, **opts):
   '''Obtains the total number of measurement data points at each
   measurement instance.
@@ -1035,13 +1494,7 @@ def get_meas_count(files, **opts):
   The result can be used in convert_meas_to_hdf5 routine to increase the
   efficiency of the HDF5 archive.
   '''
-  from glob import glob
-
-  if files == None:
-    files = sorted(glob("pwaf-*.meas"))
-  elif type(files) == str:
-    files = sorted(glob(files))
-
+  files = meas_glob(files)
   mea_f = meas_text()
   n_meas_data = {}
 
