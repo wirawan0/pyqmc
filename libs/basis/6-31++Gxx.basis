@@ -1,0 +1,86 @@
+# PyQMC basis library.
+# $Id: 6-31++Gxx.basis,v 1.1 2010-05-04 21:19:51 wirawan Exp $
+
+v1.2.2
+
+#  6-31++G**  EMSL  Basis Set Exchange Library   4/26/10 8:49 AM
+# Elements                             References
+# --------                             ----------
+# H - He: W.J. Hehre, R. Ditchfield and J.A. Pople, J. Chem. Phys. 56,
+# Li - Ne: 2257 (1972).  Note: Li and B come from J.D. Dill and J.A.
+# Pople, J. Chem. Phys. 62, 2921 (1975).
+# Na - Ar: M.M. Francl, W.J. Petro, W.J. Hehre, J.S. Binkley, M.S. Gordon,
+# D.J. DeFrees and J.A. Pople, J. Chem. Phys. 77, 3654 (1982)
+# K  - Zn: V. Rassolov, J.A. Pople, M. Ratner and T.L. Windus, J. Chem. Phys.
+# 109, 1223 (1998)
+# Note: He and Ne are unpublished basis sets taken from the Gaussian
+# program
+#
+
+
+# Elements                             Reference
+# --------                             ----------
+# H, Li-Cl: T. Clark, J. Chandrasekhar,  G.W. Spitznagel, P.V.R. Schleyer,
+#           J. Comp. Chem. 4, 294 (1983).
+#
+
+# Elements                             References
+# --------                             ----------
+# H,Li - Ne: P.C. Hariharan and J.A. Pople, Theoret. Chimica Acta 28, 213 (1973).
+# Na - Ar  : M.M. Francl, W.J. Petro, W.J. Hehre, J.S. Binkley, M.S. Gordon, D.J.
+#            DeFrees and J.A. Pople, J. Chem. Phys. 77, 3654 (1982).
+# K  - Zn:   V.A. Rassolov, J.A. Pople, M.A. Ratner, and T.L. Windus
+#            J. Chem. Phys. 109, 1223 (1998)
+#            Note: He and Ne are unpublished basis sets taken from Gaussian.
+#
+
+
+Spec: H
+S   3
+  1     18.7311370              0.03349460
+  2      2.8253937              0.23472695
+  3      0.6401217              0.81375733
+S   1
+  1      0.1612778              1.0000000
+S   1
+  1      0.0360000              1.0000000
+P   1
+  1      1.1000000              1.0000000
+.
+
+Spec: Ca
+S   6
+  1  35264.8600000              1.813501E-03
+  2   5295.5030000              1.388493E-02
+  3   1206.0200000              6.836162E-02
+  4    339.6839000              2.356188E-01
+  5    108.6264000              4.820639E-01
+  6     36.9210300              3.429819E-01
+L   6
+  1    706.3096000              2.448225E-03           4.020371E-03
+  2    167.8187000              3.241504E-02           3.100601E-02
+  3     53.8255800              1.226219E-01           1.337279E-01
+  4     20.0163800             -4.316965E-02           3.367983E-01
+  5      7.9702790             -6.126995E-01           4.631281E-01
+  6      3.2120590             -4.487540E-01           2.257532E-01
+L   6
+  1     14.1951800              1.084500E-02          -1.289621E-02
+  2      4.8808280              2.088333E-01          -1.025198E-02
+  3      2.1603900              3.150338E-02           1.959781E-01
+  4      0.9878990             -5.526518E-01           4.357933E-01
+  5      0.4495170             -5.437997E-01           3.996452E-01
+  6      0.1873870             -6.669342E-02           9.713636E-02
+L   3
+  1      1.0322710             -4.439720E-02          -0.4298621
+  2      0.3811710             -3.284563E-01           0.006935829
+  3      0.0651310              1.163010E+00           0.9705933
+L   1
+  1      0.0260100              1.000000E+00           1.00000000
+L   1
+  1      0.0071000              1.0000000              1.0000000
+D   1
+  1      0.2000000              1.0000000
+.
+
+
+
