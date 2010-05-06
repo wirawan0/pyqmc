@@ -1,2 +1,2 @@
 #!/bin/bash
-rsync -av . jaguar:/ccs/home/wirawan0/pyqmc/. -f '+ *.py' -f '+ /*/' -f '- *' 
+rsync -av . jaguar-ext:/ccs/home/wirawan0/pyqmc/. -f '+ *.py' -f '+ *.basis' -f '+ /**/' -f '- *'
