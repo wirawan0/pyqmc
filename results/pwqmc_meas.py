@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# $Id: pwqmc_meas.py,v 1.7 2010-05-04 21:35:17 wirawan Exp $
+# $Id: pwqmc_meas.py,v 1.8 2010-05-13 21:42:17 wirawan Exp $
 #
 # pwqmc_meas.py
 # Tools related to PWQMC-77 measurement dump (pwaf-*.ene) files
@@ -25,13 +25,19 @@ class raw_meas_rec(object):
   """Raw measurement record from one of the "load" functions.
   This class holds the basic record, which contains the array of El and
   wtwlkr data.
-  Generally this holds the measurement data from a population snapshot."""
+  Generally this holds the measurement data from a population snapshot
+  (or, "row").
+
+  Note: here we only define El and wtwlkr as the member of the fields;
+  but raw_meas_hdf5.load_meas_data also store `meta' field."""
   def __init__(self, El, wtwlkr):
     self.El = El
     self.wtwlkr = wtwlkr
     self.ndata = len(El)
   def __len__(self):
     return self.ndata
+  # FIXME: add deepcopy() to return a deep copy [including the
+  # metadata]
 
 
 class raw_meas_view_blk(dict):
@@ -39,16 +45,20 @@ class raw_meas_view_blk(dict):
   #def __init__(self):
   def add(self, iblk, imeas, rec):
     '''Adds a measurement record to the view.'''
+    ## BUG: if existing iblk,imeas combination exists, then the block
+    ## view is no longer valid!
     self.setdefault(iblk, {})
     self[iblk][imeas] = rec
     return rec
+  # FIXME: add deepcopy() to return a deep copy
 
 
 class raw_meas_view_flat(list):
   """View of raw measurement records in a flat 1-D array."""
   def add(self, rec):
-    self += [ rec ]
+    self.append(rec)
     return rec
+  # FIXME: add deepcopy() to return a deep copy
 
 
 # Predefined batch operations:
@@ -91,18 +101,22 @@ class raw_meas_data(object):
     if blkview:
       self.blk = raw_meas_view_blk()
     self.flat = raw_meas_view_flat()
+
   def add(self, iblk, imeas, El, wtwlkr):
     rec = raw_meas_rec(El, wtwlkr)
     if "blk" in dir(self):
       self.blk.add(iblk, imeas, rec)
     self.flat.add(rec)
     return rec
+
   def make_flat_section(self, Range):
     '''Returns a section of the raw_meas_data. Range is a slice object for the
     flat array.'''
-    rslt = raw_meas_data(blkview=False) # FIXME: add this later
+    # FIXME: block view will be nice to add this later (not always possible)
+    rslt = raw_meas_data(blkview=False)
     rslt.flat.extend(self.flat[Range]) # DIRTY HACK
     return rslt
+
   def __getitem__(self, idx):
     '''Accesses a given measurement record. For now, it supports the
     following ways of indexing:
@@ -127,10 +141,51 @@ class raw_meas_data(object):
           "Hierarchical iblk/imeas view is not possible with this viewer instance."
       (iblk,imeas) = idx
       if isinstance(imeas, slice): # disregarded
-        return self.blk[iblk]
+        # Instead of returning the lower-level object, we will
+        # try to return a view object of same kind (raw_meas_data) here.
+        #return self.blk[iblk]
+        rslt = raw_meas_data(blkview=True)
+        imeases = self.blk[iblk].keys()
+        imeases.sort()
+        for im in imeases:
+          rec = self.blk[iblk][im]
+          rslt.add(iblk, im, rec.El, rec.wtwlkr)
+        return rslt
       elif isinstance(imeas, int):
         return self.blk[iblk][imeas]
     raise IndexError, "Invalid way of referring to a measurement record."
+
+  def ndata(self):
+    """Returns the number of records in the flat view."""
+    return len(self.flat)
+
+  # Two aliases:
+  __len__ = ndata
+  nrows = ndata
+
+  def nblk(self):
+    """Returns the number of blocks in the blocked view."""
+    if "blk" not in dir(self):
+      raise RuntimeError, \
+        "Hierarchical iblk/imeas view is not possible with this viewer instance."
+    return len(self.blk)
+
+  def __iter__(self):
+    """Returns iterator over the flat records, for simple iteration over
+    the measurement records."""
+    return self.flat.__iter__()
+
+  def shape_stats(self):
+    """Returns statistical information about the data shape.
+    Returned as 5-tuple (or more, later):
+    . number of records (rows)
+    . average, stddev, min, and max of the number of measurement data in a row
+    """
+    popsizes = numpy.array([ len(row) for row in self ])
+    return (len(self), popsizes.mean(),
+            popsizes.std(),
+            popsizes.min(), popsizes.max())
+
   def batch_operate(self, ranges, op, global_op = None):
     """Performs batch/collective operation on a range of records as
     given in ranges.
@@ -148,10 +203,7 @@ class raw_meas_data(object):
     for idx in ranges:
       tmp_rslt.append( op(self[idx]) )
     return global_op(tmp_rslt)
-  def ndata(self):
-    """Returns the number of records in the flat view."""
-    return len(self.flat)
-  __len__ = ndata
+
   def all_recs(self):
     """A shortcut to refer to all records in the flat view. For use with
     batch_operate."""
@@ -173,7 +225,14 @@ class raw_meas_data(object):
     - "wavg":  a tuple containing the global weighted average and the sum of all the
       weights (wtwlkr)
     - "wavg+err": like "wavg", but there is an additional field in the tuple, which is
-      the error estimate of the mean."""
+      the error estimate of the mean.
+
+    Example usage for typical weighted average over all measurement records
+    (rows), supposing rec is a `raw_meas_data' object instance:
+
+    rec.batch_operate(rec.all_recs(), rec.weighted_avg_op('El'))
+
+    """
     if result == "array":
       global_op = \
           lambda arr: numpy.array(arr, dtype=[(fld, "=f8"), ("wtwlkr", "=f8")])
@@ -498,8 +557,9 @@ class raw_meas_hdf5(object):
       ]
     return (wtwlkr_slices, El_slices, meas_recs)
 
-  def load_meas_data(self, stage=None, match=None, append_to_raw=None):
-    '''Loads measurement records for a given stage (if `stage' is specified) or
+  def load_meas_data(self, stage=None, match=None, append_to_raw=None,
+                     value_processor=None):
+    """Loads measurement records for a given stage (if `stage' is specified) or
     those matching given record (if `match' is specified).
 
     The `match' function must accept a dict argument, which contains metadata
@@ -512,7 +572,17 @@ class raw_meas_hdf5(object):
     object to which we want to append the dataset.
     This option is useful, for example, for chaining the raw data from various
     sequential parts of a QMC run.
-    '''
+
+    The `value_processor', if given, must be a python function with the
+    following prototype:
+        value_processor(<value_dict>, <metadata_dict>)
+    The values are given as <value_dict> with three keys:
+        'E_l', 'wtwlkr', 'proc'.
+    The imaginary part of E_l is include, unless if it has already been
+    discarded when converting from the *.ene files (see notes in
+    convert_meas_to_hdf5_v2 method).
+
+    """
     if append_to_raw != None:
       rslt = append_to_raw
     else:
@@ -536,9 +606,20 @@ class raw_meas_hdf5(object):
       imeas = m['imeas']
       ndata = m['count']
       #El[0:ndata] = self.E_l[row, 0:ndata].real
+
+      E_l = self.E_l[row, 0:ndata]
+      wtwlkr = self.wtwlkr[row, 0:ndata]
+
+      if value_processor != None:
+        proc = self.proc[row, 0:ndata]
+        meta = m.copy()
+        meta['row'] = row
+        data = { 'E_l': E_l, 'wtwlkr': wtwlkr, 'proc': proc }
+        value_processor(data, meta)
+
       rec = rslt.add(iblk, imeas, \
-                     El=numpy.copy(self.E_l[row, 0:ndata].real), \
-                     wtwlkr=self.wtwlkr[row, 0:ndata])
+                     El=numpy.copy(E_l.real), \
+                     wtwlkr=wtwlkr)
       # Also store the metadata here:
       rec.meta = m
 
@@ -546,11 +627,15 @@ class raw_meas_hdf5(object):
 
   def get_raw_object(self, src_raw):
     # No support for derived class yet :-(
-    if type(src_raw) == meas_hdf5:
+    if isinstance(src_raw, meas_hdf5):
       src_raw = src_raw.raw
-    elif type(src_raw) == h5py.highlevel.Group:
+    elif isinstance(src_raw, h5py.highlevel.Group):
       src_raw = src_raw['raw']
-    elif type(src_raw) != raw_meas_hdf5:
+    elif isinstance(src_raw, raw_meas_hdf5):
+      pass
+      #src_raw = src_raw.raw_group --nope
+    else:
+    #elif type(src_raw) != raw_meas_hdf5:
       raise ValueError, \
           "Don't know how to handle object of type " + str(type(src_raw))
     return src_raw
@@ -668,8 +753,9 @@ class meas_hdf5(object):
   # default chunking: 4 in time direction, 32 in wlkr direction
   default_raw_chunks = [4, 32]
 
-  def __init__(self, fname=None, mode="a"):
-    if fname: self.open(fname,mode)
+  def __init__(self, fname=None, mode="a", create_raw=True):
+    if fname: self.open(fname, mode=mode, create_raw=create_raw)
+
   def __del__(self):
     #if hasattr(self, "dbh5")
     # We must delete circular reference to itself via raw ptr:
@@ -776,8 +862,6 @@ class meas_hdf5(object):
     # circular reference woes, we make the meas_hdf5 reference in the
     #  raw object "weak".)
     return raw
-
-  
 
 
 # end class meas_hdf5
@@ -1225,7 +1309,7 @@ def convert_meas_to_hdf5_v2(output, H0=0, files=None, **opts):
     Calling convention:
       value_processor(<numpy_array>, <metadata_dict>)
     The array contains the following fields: 'E_l', 'wtwlkr', 'proc'.
-    Don't mess with 'proc' unless youknow what you are doing!
+    Don't mess with 'proc' unless you know what you are doing!
 
   Hints:
   . nwlkmax: maximum number of walkers in the measurement
@@ -1239,8 +1323,13 @@ def convert_meas_to_hdf5_v2(output, H0=0, files=None, **opts):
   global hdf5_conv_last  # for debugging
   from pyqmc.stats.avg import avg
 
-  files = meas_glob(files)
+  Files = files
+  files = meas_glob(Files)
   numcpu = len(files)
+  if numcpu <= 0:
+    raise RuntimeError, \
+      "No files were found: glob = %s, pwd = %s" \
+      % (str(Files), os.getcwd())
 
   T = timer()
   optDebug = opts.get("debug", 0)
@@ -1551,6 +1640,11 @@ def reduce_measurements(wtwlkr_slices, El_slices, reblk_size):
 
 
 def cap_Elocal(El, El_caps, verbose = False):
+  """
+  Local energies should by now have been capped properly by the PWQMC-77 code.
+  Should you need this functionality on a measurement dataset, please
+  consider using more versatile raw_meas_data.cap_Elocal_op batch operator.
+  """
   (El_min, El_max) = El_caps
   ncap_lo = 0
   ncap_hi = 0
