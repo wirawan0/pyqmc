@@ -1,4 +1,4 @@
-# $Id: pwqmc_info.py,v 1.1 2010-05-04 21:27:29 wirawan Exp $
+# $Id: pwqmc_info.py,v 1.2 2010-08-13 01:55:18 wirawan Exp $
 #
 # pwqmc_info.py
 # Tools to parse PWQMC-77 INFO file
@@ -16,7 +16,15 @@ import time
 import numpy
 
 class pwqmc_info(dict):
-  '''Structure to represent the metadata contained in INFO file.'''
+  '''Structure to represent the metadata contained in INFO file.
+
+  Available information:
+  * info_file
+  * Evar_noconst  Evar  H0
+  * deltau  betablk
+  * kpt
+  * vol
+  '''
   def __init__(self, src=None):
     if isinstance(src, dict):
       self.clear()
@@ -40,6 +48,7 @@ class pwqmc_info(dict):
     info_file = open(INFO, "r")
     self.clear()
     rslt = self
+    rslt['info_file'] = INFO
     for L in info_file:
       Ls = L.strip()
       flds = Ls.split()
@@ -106,3 +115,21 @@ class pwqmc_info(dict):
 def parse_INFO(INFO):
   '''Gets all the necessary info (calculation parameters) from the INFO file.'''
   return pwqmc_info(str(INFO))
+
+
+def kptstr(kpt):
+  """Prints k-point string in a standardized way.
+  kpt is either a string (in which case it is passed verbatimly), or
+  a 3-vector (list, tuple, numpy array, whatever indexable with integers
+  0, 1, 2)."""
+  if isinstance(kpt, str):
+    # FIXME: must check assumption
+    # But this is also nice for "*" kind of wildcard.
+    # Assume already +3425+3425+3425 format:
+    return kpt
+  else:
+    return "%+05.0f%+05.0f%+05.0f" \
+           % (float(kpt[0])*10000, float(kpt[1])*10000, float(kpt[2])*10000)
+
+
+
