@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# $Id: text_input.py,v 1.2 2010-02-02 16:12:57 wirawan Exp $
+# $Id: text_input.py,v 1.3 2010-08-13 01:50:10 wirawan Exp $
 #
 # pyqmc.utils.text_input module
 # Quick-n-dirty text input utilities
@@ -50,7 +50,7 @@ class text_input(object):
       self.set_options(**opts)
 
   def __del__(self):
-    if getattr(self, "file"):
+    if getattr(self, "file", None):
       self.file.close()
 
   def __iter__(self):
