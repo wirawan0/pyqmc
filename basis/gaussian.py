@@ -1,4 +1,4 @@
-# $Id: gaussian.py,v 1.2 2010-02-24 15:19:58 wirawan Exp $
+# $Id: gaussian.py,v 1.3 2010-08-13 01:49:43 wirawan Exp $
 #
 # pyqmc.basis module
 # Created: 20100201
@@ -63,7 +63,7 @@ class GTOBasis(object):
     # and by changing local precision_control, we can alter the output
     # below.
 
-  def load(self, srcfile, ispher=True):
+  def load(self, srcfile, ispher=True, basisname=None):
     """Loads the basis function from a given source file.
     The data in the source file is essentially in GAMESS (US) format with
     minor modification to indicate the species and the end of the basis data
@@ -75,6 +75,11 @@ class GTOBasis(object):
       raise ValueError, \
             "Basis functions not found for species `%s' in library file `%s'" \
             % (self.species, srcfile)
+    if basisname == None:
+      b = os.path.basename(srcfile)
+      if b.endswith('.basis'): b = b[:-6]
+      basisname = b
+    self.basisname = b
     L = F.next_rec()
     funcs = []
     while L[0] != '.':
@@ -106,6 +111,33 @@ class GTOBasis(object):
         ]) \
           for (typ, desc) in self.funcs
       ])
+
+  def output_psi3(self, specname=None, indent=0, basisname=None):
+    """Outputs the basis definition in psi3 input format.
+    The argument indent can be an integer (how many whitespaces added for
+    indentation or a string."""
+    specname = specname or self.species
+    basisname = basisname or self.basisname
+    if isinstance(indent,int) and indent >= 0: indent = " " * indent
+
+    def list_sum(L):
+      r = []
+      for i in L:
+        r += i
+      return r
+
+    return \
+      "\n".join([
+        '%s%s: "%s" = (' % (indent, specname, basisname),
+        ] + list_sum([[
+          '%s  (%s  ' % (indent, typ) + \
+          ("\n%s      " % indent).join([
+             "(%17.8f %19.9f)" % (Exp, Coeff) for (Exp,Coeff) in desc
+          ]) + \
+          ')'
+        ] for (typ, desc) in self.funcs ]) + \
+        [ '%s)' % (indent,), ]
+      )
 
   def output_gamess(self, specname=None, indent=0):
     """Outputs the basis definition in gamess(US) input format.
