@@ -1,0 +1,78 @@
+# PyQMC basis library.
+# $Id: aug-cc-pV5Z.basis,v 1.1 2010-08-20 13:52:25 wirawan Exp $
+# Easily importable from PNL BSE, modified from GAMESS format.
+
+v1.2.2
+
+#  aug-cc-pV5Z  EMSL  Basis Set Exchange Library   7/28/10 12:25 PM
+# Elements                             References
+# --------                             ----------
+# H      : T.H. Dunning, Jr. J. Chem. Phys. 90, 1007 (1989).
+# He     : D.E. Woon and T.H. Dunning, Jr. J. Chem. Phys. 100, 2975 (1994).
+# Li     : Unofficial set from D. Feller.
+# B  - Ne: T.H. Dunning, Jr. J. Chem. Phys. 90, 1007 (1989).
+# Na - Mg: Unofficial set from D. Feller.
+# Al - Ar: D.E. Woon and T.H. Dunning, Jr.  J. Chem. Phys. 98, 1358 (1993).
+# Ca     : J. Koput and K.A. Peterson, J. Phys. Chem. A, 106, 9595 (2002).
+# Sc - Zn: N.B. Balabanov and K.A. Peterson, J. Chem. Phys., 123, 064107 (2005)
+# Ga - Kr: A.K. Wilson, D.E. Woon,K.A. Peterson, T.H.Dunning, Jr., J. Chem. Phys. 110, 7667 (1999)
+#
+
+
+# Elements                             References
+# --------                             ---------
+# H    :  T.H. Dunning, Jr. J. Chem. Phys. 90, 1007 (1989).
+# Diffuse s exponent - S. Mielke
+# He   :  D.E. Woon and T.H. Dunning, Jr., J. Chem. Phys. 100, 2975 (1994).
+# B - F:  R.A. Kendall, T.H. Dunning, Jr. and R.J. Harrison, J. Chem. Phys. 96,
+# 6796 (1992).
+# Al - Cl: D.E. Woon and T.H. Dunning, Jr. J. Chem. Phys. 98, 1358 (1993).
+# Sc - Zn: N.B. Balabanov and K.A. Peterson, J. Chem. Phys, 123, 064107 (2005)
+#
+
+Spec: H
+S   4
+  1    402.0000000              0.0002790
+  2     60.2400000              0.0021650
+  3     13.7300000              0.0112010
+  4      3.9050000              0.0448780
+S   1
+  1      1.2830000              1.0000000
+S   1
+  1      0.4655000              1.0000000
+S   1
+  1      0.1811000              1.0000000
+S   1
+  1      0.0727900              1.0000000
+S   1
+  1      0.0207000              1.0000000
+P   1
+  1      4.5160000              1.0000000
+P   1
+  1      1.7120000              1.0000000
+P   1
+  1      0.6490000              1.0000000
+P   1
+  1      0.2460000              1.0000000
+P   1
+  1      0.0744000              1.0000000
+D   1
+  1      2.9500000              1.0000000
+D   1
+  1      1.2060000              1.0000000
+D   1
+  1      0.4930000              1.0000000
+D   1
+  1      0.1560000              1.0000000
+F   1
+  1      2.5060000              1.0000000
+F   1
+  1      0.8750000              1.0000000
+F   1
+  1      0.2740000              1.0000000
+G   1
+  1      2.3580000              1.0000000
+G   1
+  1      0.5430000              1.0000000
+.
+
