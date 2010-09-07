@@ -1,4 +1,4 @@
-# $Id: gaussian.py,v 1.3 2010-08-13 01:49:43 wirawan Exp $
+# $Id: gaussian.py,v 1.4 2010-09-07 15:12:09 wirawan Exp $
 #
 # pyqmc.basis module
 # Created: 20100201
@@ -32,6 +32,7 @@ import pyqmc.utils.file_utils
 from pyqmc.utils.file_utils import path_search
 import pyqmc.utils.text_input
 from pyqmc.utils.text_input import text_input
+from wpylib.sugar import ifelse, list_join
 
 # TODO: GlobalPrecisionControl object which controls the precision
 #
@@ -120,16 +121,10 @@ class GTOBasis(object):
     basisname = basisname or self.basisname
     if isinstance(indent,int) and indent >= 0: indent = " " * indent
 
-    def list_sum(L):
-      r = []
-      for i in L:
-        r += i
-      return r
-
     return \
       "\n".join([
         '%s%s: "%s" = (' % (indent, specname, basisname),
-        ] + list_sum([[
+        ] + list_join(*[[
           '%s  (%s  ' % (indent, typ) + \
           ("\n%s      " % indent).join([
              "(%17.8f %19.9f)" % (Exp, Coeff) for (Exp,Coeff) in desc
@@ -137,6 +132,29 @@ class GTOBasis(object):
           ')'
         ] for (typ, desc) in self.funcs ]) + \
         [ '%s)' % (indent,), ]
+      )
+
+  def output_mpqc(self, specname=None, indent=0, basisname=None):
+    """Outputs the basis definition in mpqc input format.
+    The argument indent can be an integer (how many whitespaces added for
+    indentation or a string."""
+    specname = specname or self.species
+    basisname = basisname or self.basisname
+    if isinstance(indent,int) and indent >= 0: indent = " " * indent
+
+    return \
+      "\n".join([
+        '%s%s: "%s": [' % (indent, specname, basisname),
+        ] + list_join(*[[
+          '%s  (type: [(am=%s%s)]\n' % (indent, typ.lower(),
+                                       ifelse(self.ispher and self.nfuncs_spher_map[typ] >= 5, " puream=1", "")) + \
+          '%s   {exp coef:0} = {' % (indent,) + \
+          ("\n%s      " % indent).join([""] + [
+             "%17.8f %19.9f" % (Exp, Coeff) for (Exp,Coeff) in desc
+          ]) + \
+          '\n%s  })' % (indent,)
+        ] for (typ, desc) in self.funcs ]) + \
+        [ '%s]' % (indent,), ]
       )
 
   def output_gamess(self, specname=None, indent=0):
@@ -233,3 +251,57 @@ def sph_norm(func):
   (typ, desc) = func
 
 
+def convert_BSE_basis(fname, outfname):
+  """Converts basis information obtained from BSE to internal format.
+  This subroutine expect GAMESS-US format."""
+
+  from time import strftime
+  from pyqmc.physics.atoms import get as get_atom
+
+  In = text_input(fname)
+  In.skip_blank_lines = False
+
+  if outfname == str:
+    class outwriter:
+      def __init__(self):
+        self.r = []
+      def write(self,s):
+        self.r.append(s)
+      def writelines(self,s):
+        self.r += s
+      def __str__(self):
+        return "".join(self.r)
+    out = outwriter()
+  else:
+    out = open(outfname, "w")
+
+  out.writelines(["# Converted automatically using pyqmc.basis.gaussian.convert_BSE_basis\n",
+                  "# Source file: %s\n" % fname,
+                  "# Date: %s\n" % strftime("%Y-%m-%d %H:%M"),
+                 ])
+  for I in In:
+    if I.startswith("!"):
+      I = "#" + I[1:]
+    elif I.startswith("$DATA"):
+      break # go to the next stage
+    out.writelines([I, "\n"])
+
+  ended = 0
+  for spec in In:
+    atom = get_atom(spec)
+    out.writelines(["Spec: ", atom.symb, "\n"])
+    for bas in In:
+      if bas.strip() == "":
+        out.write(".\n\n")
+        break
+      elif bas.startswith("$END"):
+        out.write(".\n\n")
+        ended = 1
+        break
+      else:
+        out.writelines([bas, "\n"])
+    if ended:
+      break
+
+  if (outfname == str):
+    return str(out)
