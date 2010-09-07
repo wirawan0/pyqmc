@@ -1,4 +1,4 @@
-# $Id: atoms.py,v 1.1 2010-09-03 20:39:08 wirawan Exp $
+# $Id: atoms.py,v 1.2 2010-09-07 15:10:56 wirawan Exp $
 #
 # pyqmc.physics.atoms module
 # Created: 20100903
@@ -29,7 +29,7 @@ ATOM_LIST = """\
  12 Mg  magnesium
  13 Al  aluminium aluminum
  14 Si  silicon
- 15 P   phosphorus
+ 15 P   phosphorus phosphorous
  16 S   sulfur sulphur
  17 Cl  chlorine
  18 Ar  argon
