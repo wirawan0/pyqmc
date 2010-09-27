@@ -1,4 +1,4 @@
-# $Id: timer.py,v 1.2 2010-02-02 16:13:22 wirawan Exp $
+# $Id: timer.py,v 1.3 2010-09-27 19:58:29 wirawan Exp $
 #
 # timer.py
 # Simple timer and possibly other timing-related routine
@@ -6,15 +6,13 @@
 # Wirawan Purwanto
 # Created: 20081022
 #
-import time
 
-class timer:
-  '''A small timer class.'''
-  def start(self):
-    self.tm1 = time.clock()
-  def stop(self):
-    self.tm2 = time.clock()
-    return (self.tm2 - self.tm1)
-  def length(self):
-    return self.tm2 - self.tm1
+"""
+Obsoleted. Now loads wpylib.timer .
+"""
 
+import sys
+sys.stderr.write("pyqmc.utils.timer is obsoleted. Please use wpylib.timer instead.\n")
+sys.stderr.flush()
+
+from wpylib.timer import *
