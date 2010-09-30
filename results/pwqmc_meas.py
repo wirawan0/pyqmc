@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# $Id: pwqmc_meas.py,v 1.9 2010-07-29 16:03:20 wirawan Exp $
+# $Id: pwqmc_meas.py,v 1.10 2010-09-30 01:45:42 wirawan Exp $
 #
 # pwqmc_meas.py
 # Tools related to PWQMC-77 measurement dump (pwaf-*.ene) files
@@ -19,7 +19,7 @@ import weakref
 import h5py # HDF5 Python API
 import numpy
 
-from pyqmc.utils.timer import timer
+from wpylib.timer import timer
 
 class raw_meas_rec(object):
   """Raw measurement record from one of the "load" functions.
@@ -761,7 +761,7 @@ class meas_hdf5(object):
     "Creator": "pyqmc.results.pwqmc_meas",
     "FormatType": "pwqmc_meas",
     "FormatVersion": 0,
-    "Devel_CVS_ID": "$Id: pwqmc_meas.py,v 1.9 2010-07-29 16:03:20 wirawan Exp $",
+    "Devel_CVS_ID": "$Id: pwqmc_meas.py,v 1.10 2010-09-30 01:45:42 wirawan Exp $",
   }
 
   def __init__(self, fname=None, mode="a", create_raw=True):
@@ -1331,6 +1331,9 @@ def convert_meas_to_hdf5_v2(output, H0=0, files=None, **opts):
   Data layout is always optimized and contiguous.
   The conversion will cost a little bit more because of file opening/closing.
 
+  The `output' parameter could be a string (interpreted as the filename of the
+  target HDF5 database), or an open meas_hdf5 object.
+
   Additional options:
   . betablk: imaginary time length of a block
   . deltau: imaginary time step
@@ -1346,7 +1349,7 @@ def convert_meas_to_hdf5_v2(output, H0=0, files=None, **opts):
   . value_processor: an optional routine which takes a structured numpy array
     and cooks the values *in place* before archiving these values in the HDF5
     database. Useful for preprocessing of the values, like scaling, adding
-    a constant (H0 does that), whatnot.
+    a constant (H0 does that), or whatnot.
     Calling convention:
       value_processor(<numpy_array>, <metadata_dict>)
     The array contains the following fields: 'E_l', 'wtwlkr', 'proc'.

@@ -1,6 +1,6 @@
-# $Id: gaussian.py,v 1.4 2010-09-07 15:12:09 wirawan Exp $
+# $Id: gaussian.py,v 1.5 2010-09-30 01:47:39 wirawan Exp $
 #
-# pyqmc.basis module
+# pyqmc.basis.gaussian module
 # Created: 20100201
 # Wirawan Purwanto
 #
@@ -28,10 +28,10 @@ REFERENCES
 
 import os.path
 import re
-import pyqmc.utils.file_utils
-from pyqmc.utils.file_utils import path_search
-import pyqmc.utils.text_input
-from pyqmc.utils.text_input import text_input
+import wpylib.file.file_utils
+from wpylib.file.file_utils import path_search
+import wpylib.iofmt.text_input
+from wpylib.iofmt.text_input import text_input
 from wpylib.sugar import ifelse, list_join
 
 # TODO: GlobalPrecisionControl object which controls the precision
