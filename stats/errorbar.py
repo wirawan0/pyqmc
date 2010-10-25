@@ -1,4 +1,4 @@
-# $Id: errorbar.py,v 1.2 2009-06-18 15:42:19 wirawan Exp $
+# $Id: errorbar.py,v 1.3 2010-10-25 14:46:58 wirawan Exp $
 #
 # Module pyqmc.stats.errorbar
 # Errorbar text handling for Python
@@ -28,7 +28,8 @@ class regexp__aux(object):
     #
     # Standard errorbar matcher (errorbar in parantheses), in the form of a tuple
     # The first element of the matcher is a regexp matcher object, and the
-    # second element is
+    # second element is a function to extract the (value,error) tuple from the
+    # successful matching process.
     R.errbar = \
       (
         re.compile(r"([-+]?\d+)"    # leading digits with optional sign
@@ -110,4 +111,26 @@ def expand(obj, convert_float=False, flatten=False):
         # to float:
         rslt.append(o)
   return rslt
+
+class float_decomposer(object):
+  """Floating-point decomposition.
+  We are assuming IEEE double precision here."""
+
+  def __init__(self, val):
+    self.val = val
+    V = "%+.16g" % val
+    self.sign = V[0]
+    self.digits = V[1] + V[3:3+16]
+    self.exp = int(V[18:])
+
+  set = __init__
+
+
+class errorbar_compressor(object):
+  """Compressor for errorbar string."""
+  def __init__(self):
+    self.errdigits = 2
+  def __call__(self, val, err, **args):
+    errdigits = args.get("errdigits", self.errdigits)
+
 
