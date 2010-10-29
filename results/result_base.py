@@ -1,4 +1,4 @@
-# $Id: result_base.py,v 1.1 2010-10-25 15:29:42 wirawan Exp $
+# $Id: result_base.py,v 1.2 2010-10-29 16:00:51 wirawan Exp $
 #
 # pyqmc.results.result_base.py
 # Basic tool for storing the result of a calculation.
@@ -12,6 +12,9 @@
 # much simpler.
 #
 
+import os
+import os.path
+
 class result_base(dict):
   '''Structure to represent metadata or structured result.
   No particular structure is assumed.
@@ -21,13 +24,17 @@ class result_base(dict):
   CAVEATS
   * Note: dict method method names are left intact.
     Please be aware when programming this thing!
+  * Additional possible field names set by this class:
+    - filename_
+    - absfilename_ -- full file name including absolute directory path.
   * __setattr__ is not set.
     Result-related attributes are supposed to be read-only.
-  * As a consequence, adding metadata or result *must* be done in the
+    As a consequence, adding metadata or result *must* be done in the
     dict way, e.g.
         X['nblocks'] = 32
     instead of
         X.nblocks = 32.
+
   '''
   def __init__(self, src=None):
     if isinstance(src, dict):
@@ -38,6 +45,7 @@ class result_base(dict):
       # This must be specified in the derived class.
       self.parse_text_file_(src)
       self.filename_ = src
+      self.absfilename_ = os.path.abspath(src)
     else:
       pass
   def __getattr__(self, key):
