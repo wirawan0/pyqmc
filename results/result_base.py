@@ -1,4 +1,4 @@
-# $Id: result_base.py,v 1.2 2010-10-29 16:00:51 wirawan Exp $
+# $Id: result_base.py,v 1.3 2010-11-05 02:30:55 wirawan Exp $
 #
 # pyqmc.results.result_base.py
 # Basic tool for storing the result of a calculation.
@@ -22,7 +22,7 @@ class result_base(dict):
   results are typically meant to be read-only.
 
   CAVEATS
-  * Note: dict method method names are left intact.
+  * Note: dict method names are left intact.
     Please be aware when programming this thing!
   * Additional possible field names set by this class:
     - filename_
@@ -36,11 +36,12 @@ class result_base(dict):
         X.nblocks = 32.
 
   '''
-  def __init__(self, src=None):
+  def __init__(self, _src_=None, **_extra_values_):
+    src = _src_
     if isinstance(src, dict):
       self.clear()
       self.update(src)
-    if isinstance(src, str):
+    elif isinstance(src, str):
       # WARNING: Awaiting future definition of parse_text_file_().
       # This must be specified in the derived class.
       self.parse_text_file_(src)
@@ -48,6 +49,7 @@ class result_base(dict):
       self.absfilename_ = os.path.abspath(src)
     else:
       pass
+    self.update(_extra_values_)
   def __getattr__(self, key):
     try:
       return self[key]
