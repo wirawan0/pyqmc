@@ -1,4 +1,4 @@
-# $Id: pwqmc_info.py,v 1.2 2010-08-13 01:55:18 wirawan Exp $
+# $Id: pwqmc_info.py,v 1.3 2010-11-05 02:31:30 wirawan Exp $
 #
 # pwqmc_info.py
 # Tools to parse PWQMC-77 INFO file
@@ -15,32 +15,21 @@ import time
 
 import numpy
 
-class pwqmc_info(dict):
+import pyqmc.results.result_base
+
+class pwqmc_info(pyqmc.results.result_base.result_base):
   '''Structure to represent the metadata contained in INFO file.
 
   Available information:
   * info_file
   * Evar_noconst  Evar  H0
-  * deltau  betablk
+  * Etrial_noconst  Etrial
+  * deltau  betablk  nblkstep
+  * nwlk nwlkmax nwlkmin
+  * itv_Em itv_pc itv_pc_eq
   * kpt
   * vol
   '''
-  def __init__(self, src=None):
-    if isinstance(src, dict):
-      self.clear()
-      self.update(src)
-    if isinstance(src, str):
-      self.parse_INFO(src)
-      self.filename = src
-    else:
-      pass # self._data = {}
-  def __getattr__(self, key):
-    try:
-      return self[key]
-    except:
-      return dict.__getattribute__(self, key)
-  # __setattr__ is not set. INFO-related attributes are supposed to be
-  # read-only.
   def parse_INFO(self, INFO):
     '''Gets all the necessary info (calculation parameters) from the INFO file.
     This is a very old routine.
@@ -104,10 +93,7 @@ class pwqmc_info(dict):
     rslt.setdefault("nwlkmax", rslt.nwlk * 2)
     rslt.setdefault("nwlkmin", max(rslt.nwlk / 2, 1))
     return rslt
-  def __str__(self):
-    return "<" +self.__module__ + "." + self.__class__.__name__ + \
-      " object (" + dict.__str__(self) + ")>"
-
+  parse_text_file_ = parse_INFO
 
 
 # VERY VERY OLD API: used as starting point
