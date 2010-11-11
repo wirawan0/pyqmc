@@ -1,4 +1,4 @@
-# $Id: gafqmc_info.py,v 1.1 2010-10-29 16:01:33 wirawan Exp $
+# $Id: gafqmc_info.py,v 1.2 2010-11-11 18:03:46 wirawan Exp $
 #
 # gafqmc_info.py
 # Tools to parse GAFQMC INFO file
@@ -18,7 +18,7 @@ import time
 import numpy
 
 from wpylib.iofmt.text_input import text_input
-from pyqmc.results.result_base import result_base
+from wpylib.db.result_base import result_base
 
 class gafqmc_info(result_base):
   '''Structure to represent the metadata contained in INFO file
@@ -98,4 +98,4 @@ class gafqmc_info(result_base):
                       - time.mktime(rslt["start_time"])
     return rslt
 
-  parse_text_file_ = parse_INFO
+  parse_file_ = parse_INFO

@@ -1,4 +1,4 @@
-# $Id: pwqmc_info.py,v 1.3 2010-11-05 02:31:30 wirawan Exp $
+# $Id: pwqmc_info.py,v 1.4 2010-11-11 18:03:46 wirawan Exp $
 #
 # pwqmc_info.py
 # Tools to parse PWQMC-77 INFO file
@@ -15,9 +15,9 @@ import time
 
 import numpy
 
-import pyqmc.results.result_base
+from wpylib.db.result_base import result_base
 
-class pwqmc_info(pyqmc.results.result_base.result_base):
+class pwqmc_info(result_base):
   '''Structure to represent the metadata contained in INFO file.
 
   Available information:
@@ -93,7 +93,7 @@ class pwqmc_info(pyqmc.results.result_base.result_base):
     rslt.setdefault("nwlkmax", rslt.nwlk * 2)
     rslt.setdefault("nwlkmin", max(rslt.nwlk / 2, 1))
     return rslt
-  parse_text_file_ = parse_INFO
+  parse_file_ = parse_INFO
 
 
 # VERY VERY OLD API: used as starting point
