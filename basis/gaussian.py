@@ -1,4 +1,4 @@
-# $Id: gaussian.py,v 1.5 2010-09-30 01:47:39 wirawan Exp $
+# $Id: gaussian.py,v 1.6 2010-12-01 17:20:47 wirawan Exp $
 #
 # pyqmc.basis.gaussian module
 # Created: 20100201
@@ -68,7 +68,26 @@ class GTOBasis(object):
     """Loads the basis function from a given source file.
     The data in the source file is essentially in GAMESS (US) format with
     minor modification to indicate the species and the end of the basis data
-    (a line with only '.' in it)."""
+    (a line with only '.' in it).
+
+    An example of valid field is like this:
+
+      Spec: H
+      S   3
+        1     33.8650000  0.0254938
+        2      5.0947900  0.1903730
+        3      1.1587900  0.8521610
+      S   1
+        1      0.3258400  1.0000000
+      S   1
+        1      0.1027410  1.0000000
+      S   1
+        1      0.0360000  1.0000000
+      P   1
+        1      0.7500000  1.0000000
+      .
+
+    """
     F = text_input(srcfile)
     try:
       F.seek_text(r'^(?i)spec: *%s$' % (self.species,))
@@ -88,11 +107,24 @@ class GTOBasis(object):
       # WARNING FIXME: L is still buggy. Still does not read the p coeffs correctly.
       func_typ = L[0].upper()
       func_gcount = int(L[1])
-      func_desc = []
-      for i in xrange(0, func_gcount):
-        L = F.next_rec()
-        func_desc.append((float(L[1]), float(L[2]))) # (exponent, coefficient) pair
-      funcs.append((func_typ, func_desc))
+      if func_typ == 'L' or func_typ == 'SP':
+        # For now, the 'L' or 'SP' function is loaded into two terms,
+        # one s and one p.
+        # This corresponds to the way nwchem does this thing.
+        func_desc_s = []
+        func_desc_p = []
+        for i in xrange(0, func_gcount):
+          L = F.next_rec()
+          func_desc_s.append((float(L[1]), float(L[2]))) # (exponent, coefficient) pair
+          func_desc_p.append((float(L[1]), float(L[3]))) # (exponent, coefficient) pair
+        funcs.append(('S', func_desc_s))
+        funcs.append(('P', func_desc_p))
+      else:
+        func_desc = []
+        for i in xrange(0, func_gcount):
+          L = F.next_rec()
+          func_desc.append((float(L[1]), float(L[2]))) # (exponent, coefficient) pair
+        funcs.append((func_typ, func_desc))
       L = F.next_rec()
     self.funcs = funcs
     self.ispher = ispher
@@ -215,6 +247,7 @@ class GTOBasisLib(dict):
     import pyqmc
     self.path = [ os.path.dirname(pyqmc.__file__) + "/libs/basis" ]
     self.fname_map = {
+      '6-31++G**': '6-31++Gxx',
       '6-311++G**': '6-311++Gxx',
     }
     pass
