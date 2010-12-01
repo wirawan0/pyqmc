@@ -1,4 +1,4 @@
-# $Id: output.py,v 1.1 2010-10-29 15:59:44 wirawan Exp $
+# $Id: output.py,v 1.2 2010-12-01 17:09:39 wirawan Exp $
 #
 # pyqmc.nwchem.output module
 #
@@ -17,7 +17,7 @@ import time
 
 from wpylib.regexps import regex
 from wpylib.iofmt.text_input import text_input
-from pyqmc.results.result_base import result_base
+from wpylib.db.result_base import result_base
 
 class nwchem_output(result_base):
   """Parser and structure for nwchem output text file.
@@ -31,7 +31,7 @@ class nwchem_output(result_base):
     * info_mtime
   """
 
-  def parse_text_file_(self, filename):
+  def parse_file_(self, filename):
     """Extracts information from an nwchem output file (from its stdout).
     Right now, this parser is only good for single-point calculations
     (i.e. no multijob or geometry optimization at this point)."""
