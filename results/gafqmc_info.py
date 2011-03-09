@@ -1,4 +1,4 @@
-# $Id: gafqmc_info.py,v 1.2 2010-11-11 18:03:46 wirawan Exp $
+# $Id: gafqmc_info.py,v 1.3 2011-03-09 15:44:47 wirawan Exp $
 #
 # gafqmc_info.py
 # Tools to parse GAFQMC INFO file
@@ -69,7 +69,7 @@ class gafqmc_info(result_base):
         rslt["deltau"] = float(flds[1])
       elif flds[0] == "beta=":
         rslt["betablk"] = float(flds[1])
-      elif Ls.startswith("Input etrial="):
+      elif Ls.startswith("input etrial="):
         rslt["Etrial_noconst"] = float(flds[2]) # no H0 yet
         # anorm is also available on the same line:
         rslt["anorm"] = float(flds[5])
