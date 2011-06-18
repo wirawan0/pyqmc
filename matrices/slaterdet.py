@@ -1,4 +1,4 @@
-# $Id: slaterdet.py,v 1.1 2011-06-18 02:49:39 wirawan Exp $
+# $Id: slaterdet.py,v 1.2 2011-06-18 03:05:05 wirawan Exp $
 #
 # pyqmc.matrices.slaterdet
 # Created: 20110617
@@ -16,21 +16,18 @@ Module for handling a generic Slater determinant.
 """
 
 import numpy
-#import scipy
-#import scipy.linalg
 from numpy import abs as Abs
 # scipy is too sweeping, we will revert to numpy instead:
-#from scipy import array, asmatrix, asarray, conj, matrix, ndarray, sqrt
-#from scipy.linalg import det
 from numpy import array, asmatrix, asarray, conj, matrix, ndarray, sqrt
-#from numpy.lib.scimath import sqrt
 from numpy.linalg import det
 
 class Det(object):
-  # Contains:
-  # up = up determinant: matrix
-  # dn = down determinant: matrix
-  def __init__(self, src_up = None, src_dn = None, ndn = None):
+  """Basic Slater determinant object.
+  Object members:
+  - up = up determinant: matrix
+  - dn = down determinant: matrix
+  """
+  def __init__(self, src_up=None, src_dn=None, ndn=None):
     if src_up != None:
       self.make(src_up, src_dn, ndn)
   def norm(self):
@@ -53,11 +50,13 @@ class Det(object):
   def nbasis(self):
     return self.up.shape[0]
 
+
 class MultiDet(object):
-  # Contains:
-  #dets = []
-  # where det is a list of Det objects, with attached "ampl"
+  """Basic multi-Slater determinant object.
+  Object members:
+  * dets[:] = a list of Det objects, with attached "ampl"
   # field in it.
+  """
   def set_ampl(self,mtx):
     '''Sets the determinant amplitudes. The mtx argument is either a numpy
     array, or python list or tuple.'''
@@ -77,6 +76,8 @@ class MultiDet(object):
     '''
     #ndets =
     self.set_ampl(ampl)
+    raise NotImplementedError, \
+      "make_ci routine not implemented yet."
   def norm(self):
     return mdet_ovlp(self)
   def normalize(self, N = None):
@@ -95,18 +96,17 @@ def up_ovlp(det1, det2):
   return det( det1.up.H * det2.up )
 
 def dn_ovlp(det1, det2):
-  '''Computes overlap between two determinants (dn dets only)'''
+  '''Computes overlap between two determinants (down dets only)'''
   return det( det1.dn.H * det2.dn )
 
-def det_ovlp(det1, det2): #{
+def det_ovlp(det1, det2):
   '''Computes overlap between two determinants (Det objects)'''
   return det( det1.up.H * det2.up ) \
        * det( det1.dn.H * det2.dn )
-#}det_ovlp
 
-def mdet_ovlp(mdet1, mdet2 = None): #{
+def mdet_ovlp(mdet1, mdet2 = None):
   '''Computes overlap between two MultiDet objects'''
-  ovlp = 0 + 0j
+  ovlp = 0.0 + 0.0j
   if (mdet2 == None):
     L = 0
     for Ldet in mdet1.dets:
@@ -121,8 +121,4 @@ def mdet_ovlp(mdet1, mdet2 = None): #{
         ovlp += conj(Ldet.ampl) * Rdet.ampl \
               * det_ovlp(Ldet, Rdet)
   return ovlp
-#}mdet_ovlp
-
-def blah(det1):
-  print det1
 
