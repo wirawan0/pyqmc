@@ -1,4 +1,4 @@
-# $Id: utils.py,v 1.1 2011-06-17 18:08:27 wirawan Exp $
+# $Id: utils.py,v 1.2 2011-06-18 02:54:11 wirawan Exp $
 #
 # pyqmc.matrices.utils
 # Created: 20110617
@@ -15,6 +15,10 @@ pyqmc.matrices.utils
 General-purpose matrix-related utilities.
 """
 
+import numpy
+# I cross my finger: hopefully this is not circular:
+from pyqmc.matrices.slaterdet import Det
+
 ## Matrix formation utilities
 
 def complex_matrix(mat):
@@ -24,10 +28,12 @@ def complex_matrix(mat):
 
 ## Matrix reading utilities
 
-def read_matrix(infile, name, rows, cols): #{
-  '''Reads a matrix from an opened text file. It uses "readline" method of
+def read_matrix(infile, name, rows, cols):
+  """Reads a matrix from an opened text file. It uses `readline' method of
   the infile object to do the extract text lines one by one.
-  '''
+  Currently, the `name' argument is used only to aid debugging (i.e. to tell user
+  which matrix fails to read).
+  """
   r = 0
   rslt = []
   #print "read_matrix", name, rows, cols
@@ -52,11 +58,11 @@ def read_matrix(infile, name, rows, cols): #{
         (name, rows, cols, len(fld), r+1)
     rslt.append(map(float, fld))
     r += 1
-  rslt = matrix(rslt)
+  rslt = numpy.matrix(rslt)
   return rslt
-#}read_matrix
 
-def read_det_matrix(infile, name, nbasis, nup, ndn, cplx = None, restricted = None, verbose = None): #{
+
+def read_det_matrix(infile, name, nbasis, nup, ndn, cplx=None, restricted=None, verbose=None):
   '''Reads a determinant from an opened text file, formatted as a matrix.
   This routine uses read_matrix to read in the matrix.
   '''
@@ -78,5 +84,5 @@ def read_det_matrix(infile, name, nbasis, nup, ndn, cplx = None, restricted = No
     return Det(mtx[:, 0:nup], mtx[:, 0:ndn])
   else:
     return Det(mtx[:, 0:nup], mtx[:, nup:nup+ndn])
-#} read_det_matrix
+
 
