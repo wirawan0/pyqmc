@@ -1,4 +1,4 @@
-# $Id: gms.py,v 1.2 2011-06-18 04:05:55 wirawan Exp $
+# $Id: gms.py,v 1.3 2011-06-18 04:13:32 wirawan Exp $
 #
 # pyqmc.matrices.gms
 # Created: 20110617
@@ -19,10 +19,13 @@ legacy matrix format used by GAFQMC code.
 
 import numpy
 import numpy.linalg
-from numpy.linalg import eigh
+
+from numpy import asmatrix, empty, matrix, zeros_like
+from numpy.linalg import eigh, inv
 
 from wpylib.iofmt.text_input import text_input
 from pyqmc.matrices.orthog import Xorth_canonical
+from pyqmc.matrices.utils import read_matrix, read_det_matrix
 
 class OneBodyGms(object):
   """One-body matrix element.
@@ -162,8 +165,10 @@ class EigenGms(object): #{
 
 
 class Fort70(object): #{
-  '''Fort70 is a representation of the GAFQMC fort.70-style matrix file.
-  '''
+  """Fort70 is a representation of the GAFQMC fort.70-style matrix file.
+  As of 2011 this object is largely deprecated in favor of direct access
+  to the source matrices via OneBodyGms and EigenGms objects.
+  """
   #nup = None
   #ndn = None
   # Mapping between fort.70 matrix name and internal field name:
