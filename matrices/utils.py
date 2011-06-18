@@ -1,4 +1,4 @@
-# $Id: utils.py,v 1.2 2011-06-18 02:54:11 wirawan Exp $
+# $Id: utils.py,v 1.3 2011-06-18 04:12:14 wirawan Exp $
 #
 # pyqmc.matrices.utils
 # Created: 20110617
@@ -29,17 +29,23 @@ def complex_matrix(mat):
 ## Matrix reading utilities
 
 def read_matrix(infile, name, rows, cols):
-  """Reads a matrix from an opened text file. It uses `readline' method of
-  the infile object to do the extract text lines one by one.
-  Currently, the `name' argument is used only to aid debugging (i.e. to tell user
-  which matrix fails to read).
+  """Reads a matrix from an opened text file.
+  Currently, the `name' argument is used only to aid debugging (i.e. to
+  give user more information concerning the matrix that fails to read).
+  Changed: Now it uses `next()' method of the infile file-like object to
+  extract text lines one by one.
+  The matrix content must *not* contain any comment or stray field.
+  The number of columns must be specified by the caller; but we can leave the
+  number of rows unspecified, i.e. we read all the matrix contents until the
+  end of the file.
   """
   r = 0
   rslt = []
   #print "read_matrix", name, rows, cols
   while rows == None or r < rows:
-    txt = infile.readline()
-    if (txt == ""):
+    try:
+      txt = infile.next()
+    except StopIteration:
       if (rows != None):
         raise EOFError, \
           "Unexpected EOF while reading the content of `%s' matrix (%sx%d): " + \
