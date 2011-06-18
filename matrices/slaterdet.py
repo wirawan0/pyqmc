@@ -1,13 +1,21 @@
-# $Id: multidet.py,v 1.2 2009-01-09 21:48:59 wirawan Exp $
+# $Id: slaterdet.py,v 1.1 2011-06-18 02:49:39 wirawan Exp $
 #
-# multidet.py
-# Created: 20080925
+# pyqmc.matrices.slaterdet
+# Created: 20110617
 # Wirawan Purwanto
+# College of William and Mary
+# Williamsburg, VA, USA
 #
-# Determinant handling in Python.
-# Unfortunately what looks nice in octave has its own cost: time.
-# Hopefully this is not the case with python/scipy.
+# This module is part of PyQMC project.
+#
 
+"""
+pyqmc.matrices.slaterdet
+
+Module for handling a generic Slater determinant.
+"""
+
+import numpy
 #import scipy
 #import scipy.linalg
 from numpy import abs as Abs
