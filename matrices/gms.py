@@ -1,4 +1,4 @@
-# $Id: gms.py,v 1.3 2011-06-18 04:13:32 wirawan Exp $
+# $Id: gms.py,v 1.4 2011-06-20 15:36:34 wirawan Exp $
 #
 # pyqmc.matrices.gms
 # Created: 20110617
@@ -97,7 +97,7 @@ class EigenGms(object): #{
     BE WARNED: the parser is very primitive.
     It's not intended to be foolproof or flexible.
     '''
-    if "readline" in dir(infile):
+    if hasattr(infile, "next"):
       self_open = False
     elif isinstance(infile, str): # if a string, let's open the file
       if verbose: print "Reading eigen_gms from file " + infile
@@ -106,26 +106,26 @@ class EigenGms(object): #{
     else:
       raise TypeError, \
         "The infile argument must be either an open file, " + \
-        "a stream with readline() method, or a string (filename)"
+        "a stream with next() method, or a string (filename)"
 
     # The first text line must be correct:
-    fld = infile.readline().split()
+    fld = infile.next().split()
     self.nbasis = int(fld[0])
     self.norb = int(fld[1])
     if verbose:
       print "EigenGms.read: nbasis=%d, norb=%d" % (self.nbasis, self.norb)
 
-    infile.readline() # skip a blank line
+    infile.next() # skip a blank line
     self.alpha = asmatrix(empty((self.nbasis, self.norb)))
     for o in xrange(0, self.norb):
       self.alpha[:,o] = \
         read_matrix(infile, "eigen_gms_alpha_orb#" + str(o),
                     self.nbasis, 1)
-      infile.readline() # skip a blank line
+      infile.next() # skip a blank line
 
     self.udet = False
     try:
-      fld = infile.readline().split()
+      fld = infile.next().split()
       nbasis2 = int(fld[0])
       norb2 = int(fld[1])
       if (nbasis2 != self.nbasis or norb2 != self.norb):
@@ -133,13 +133,13 @@ class EigenGms(object): #{
                          "or orbitals for beta sector; " + \
                          "omitting beta sector altogether.")
       else:
-        infile.readline() # skip a blank line
+        infile.next() # skip a blank line
         self.beta = asmatrix(empty((self.nbasis, self.norb)))
         for o in xrange(0, self.norb):
           self.beta[:,o] = \
             read_matrix(infile, "eigen_gms_beta_orb#" + str(o),
                         self.nbasis, 1)
-          infile.readline() # skip a blank line
+          infile.next() # skip a blank line
         self.udet = True
     except:
       # If it doesn't find the beta orbital, forget about it.
@@ -211,10 +211,10 @@ class Fort70(object): #{
     #print "opening file " + fname
     inp = open(fname, "r")
     try:
-      txt = inp.readline().rstrip()
+      txt = inp.next().rstrip()
       if (txt != "GAFQMC matrix element file v1"):
         raise ValueError("Not a GAFQMC matrix element file: " + fname)
-      txt = inp.readline()
+      txt = inp.next()
       # BE WARNED: the parser below is very primitive.
       # It's not intended to be foolproof.
       while (txt != ""):
@@ -256,7 +256,9 @@ class Fort70(object): #{
             self.psiT_det.append(detmp)
           else:
             raise ValueError, "Unknown matrix name: `" + name + "'"
-        txt = inp.readline()
+        txt = inp.next()
+    except StopIteration:
+      inp.close()
     finally:
       inp.close()
   #}read
