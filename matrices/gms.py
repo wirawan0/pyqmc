@@ -1,4 +1,4 @@
-# $Id: gms.py,v 1.4 2011-06-20 15:36:34 wirawan Exp $
+# $Id: gms.py,v 1.5 2011-06-20 16:16:01 wirawan Exp $
 #
 # pyqmc.matrices.gms
 # Created: 20110617
@@ -85,6 +85,13 @@ class OneBodyGms(object):
 
 
 class EigenGms(object): #{
+  """Molecular orbitals expressed in (nonorthogonal) AO basis---the so-called
+  'eigen_gms' format.
+  """
+  def __init__(self, src=None):
+    if src:
+      self.read(src)
+
   def read(self, infile, fort70=None, verbose=None): #{
     '''Reads in eigen_gms formatted file.
     The parsing results are stored in:
