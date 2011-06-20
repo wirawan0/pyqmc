@@ -1,4 +1,4 @@
-# $Id: orthog.py,v 1.1 2011-06-18 04:00:37 wirawan Exp $
+# $Id: orthog.py,v 1.2 2011-06-20 16:17:52 wirawan Exp $
 #
 # pyqmc.matrices.orthog
 # Created: 20110617
@@ -33,3 +33,17 @@ def Xorth_canonical(S):
   X = matmul(U, diag(inv_sqrt_s1))
   Xinv = matmul(diag(sqrt_s1), U.T.conj())
   return (X, Xinv)
+
+
+def normalize_eigenvectors(U):
+  """Normalizes a matrix of eigenvalues (stored in columns)
+  so that the diagonal values are all positive."""
+  from numpy import abs
+  rslt = numpy.empty_like(U)
+  for i in xrange(len(U)):
+    Uii = U[i,i]
+    if Uii != 0.0:
+      U_norm = abs(Uii) / Uii
+      rslt[:,i] = U[:,i] * U_norm
+  return rslt
+
