@@ -1,4 +1,4 @@
-# $Id: gms.py,v 1.5 2011-06-20 16:16:01 wirawan Exp $
+# $Id: gms.py,v 1.6 2011-06-21 04:47:53 wirawan Exp $
 #
 # pyqmc.matrices.gms
 # Created: 20110617
@@ -17,19 +17,26 @@ Module for handling the so-called `GAMESS-style' matrices, i.e. the
 legacy matrix format used by GAFQMC code.
 """
 
+import sys
+import os
+
 import numpy
 import numpy.linalg
 
 from numpy import asmatrix, empty, matrix, zeros_like
 from numpy.linalg import eigh, inv
 
+from wpylib.sugar import ifelse
+from wpylib.iofmt.fortbin import fortran_bin_file
 from wpylib.iofmt.text_input import text_input
+from wpylib.iofmt.text_output import text_output
 from pyqmc.matrices.orthog import Xorth_canonical
 from pyqmc.matrices.utils import read_matrix, read_det_matrix
 
 class OneBodyGms(object):
   """One-body matrix element.
-  This will get the `overlap' (S) and `core hamiltonian' (H1) matrices.
+  This will read the `overlap' (S) and `core hamiltonian' (H1) matrices
+  from a given input file.
   """
 
   def __init__(self, src=None):
@@ -84,9 +91,50 @@ class OneBodyGms(object):
     return self.Xorth_inv_
 
 
+class TwoBodyGmsUfmt(object):
+  """Two-body matrix elements.
+  WARNING: This piece of code is extremely slow and the matrix can be
+  very large.
+  The matrix member `H2' is a four-dimension object written in quantum
+  Chemistry's notation:
+
+  (il|jk)  ==> V_ijkl ==> <ij|lk>  ==> H2[i,l,j,k]
+
+  """
+  def __init__(self, infile=None, nbasis=None):
+    if infile:
+      self.read(infile, nbasis)
+  def read(self, infile, nbasis, debug=None):
+    dbg = text_output(ifelse(debug, sys.stdout, None), flush=True)
+    H2 = numpy.zeros((nbasis,nbasis,nbasis,nbasis), dtype=float)
+    self.H2 = H2
+    F = fortran_bin_file(infile)
+    S = os.stat(infile)
+    fsize = S.st_size
+    rec_desc = (('i', numpy.int32, 4), ('v', float))
+    rec_bytesize = F.byte_length(*rec_desc) + F.default_int(0).itemsize * 2
+    rec_count = fsize // rec_bytesize
+    dbg("File %s: %d integral records to be read\n" % (infile, rec_count))
+    for cc in xrange(rec_count):
+      rec = F.read(*rec_desc)
+      rec['i'] -= 1 # convert to py index
+      (i,l,j,k) = rec['i']
+      v = rec['v']
+      # Use: V2b_inspect.permute_V2b('i','j','l','k',chem=1)
+      # to generate this:
+      H2[i,l, j,k] = v
+      H2[j,k, i,l] = v
+      H2[l,i, k,j] = v
+      H2[k,j, l,i] = v
+      H2[i,l, k,j] = v
+      H2[k,j, i,l] = v
+      H2[j,k, l,i] = v
+      H2[l,i, j,k] = v
+
+
 class EigenGms(object): #{
   """Molecular orbitals expressed in (nonorthogonal) AO basis---the so-called
-  'eigen_gms' format.
+  `eigen_gms' format.
   """
   def __init__(self, src=None):
     if src:
