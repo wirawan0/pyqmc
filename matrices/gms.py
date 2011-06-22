@@ -1,4 +1,4 @@
-# $Id: gms.py,v 1.8 2011-06-22 19:18:08 wirawan Exp $
+# $Id: gms.py,v 1.9 2011-06-22 19:37:39 wirawan Exp $
 #
 # pyqmc.matrices.gms
 # Created: 20110617
@@ -279,8 +279,44 @@ class EigenGms(object): #{
       self.alpha = iXorth * self.alpha;
       if hasattr(self, "beta"):
         self.beta = iXorth * self.beta;
-  #} read_eigen_gms
-#}EigenGms class
+
+
+  def write(self, outfile, comment=None, udet=False, verbose=None): #{
+    """Writes orbitals in eigen_gms formatted file.
+
+    If only `alpha' orbitals exist then only the alpha sector is written out.
+    This can be overriden by setting udet==True; then the alpha sector is
+    duplicated as beta as well.
+    The `udet' argument is not used if `beta' exists; both sectors will
+    always be written out.
+    """
+    out = text_output(outfile)
+
+    (nbasis, norb) = self.alpha.shape
+    if comment:
+      cmt = " # " + str(comment)
+    else:
+      cmt = ""
+
+    if hasattr(self, "beta"):
+      sectors = (self.alpha, self.beta)
+      if verbose:
+        print "EigenGms.write: (alpha,beta) nbasis=%d, norb=%d" % (nbasis, norb)
+    elif udet:
+      sectors = (self.alpha, self.alpha)
+      if verbose:
+        print "EigenGms.write: (alpha,alpha) nbasis=%d, norb=%d" % (nbasis, norb)
+    else:
+      sectors = (self.alpha,)
+      if verbose:
+        print "EigenGms.write: (alpha only) nbasis=%d, norb=%d" % (nbasis, norb)
+
+    for SS in sectors:
+      out("%d %d%s\n\n" % (nbasis, norb, cmt))
+
+      for orb in numpy.array(SS,copy=False).T:
+        out("\n".join([ "%.15g" % a for a in orb ] + ["\n"]))
+
 
 
 class Fort70(object): #{
