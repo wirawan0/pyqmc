@@ -1,4 +1,4 @@
-# $Id: gms.py,v 1.6 2011-06-21 04:47:53 wirawan Exp $
+# $Id: gms.py,v 1.7 2011-06-22 18:32:57 wirawan Exp $
 #
 # pyqmc.matrices.gms
 # Created: 20110617
@@ -56,6 +56,19 @@ class OneBodyGms(object):
     self.H1_name = n2
     F.close()
 
+  def write(self, outfile, comment=None):
+    F = text_output(outfile)
+    if comment:
+      cmt = " # " + str(comment)
+    else:
+      cmt = ""
+    nbasis = self.nbasis
+    nelem = nbasis * (nbasis + 1) / 2
+    F.write("%d %d%s\n" % (nbasis, nelem, cmt))
+    self.write_matrix(F, self.S, getattr(self, "S_name", "Overlap"), symmetric=True)
+    self.write_matrix(F, self.H1, getattr(self, "H1_name", "Core Hamiltonian"), symmetric=True)
+    F.close()
+
   def read_matrix(self, F):
     """Reads an individual matrix from text stream F, each line in the
     format:
@@ -72,6 +85,26 @@ class OneBodyGms(object):
       m2[r-1,c-1] = v
       m2[c-1,r-1] = v
     return (matname, m2)
+
+  def write_matrix(self, F, m, name, symmetric=True):
+    """Writes a matrix in one_body_gms format.
+    If symmetric == True, then m[r,c] is written where r >= c is used.
+    """
+    r_len = len("%d" % m.shape[0])
+    c_len = len("%d" % m.shape[1])
+    fmt = "%" + str(r_len) + "d %" + str(c_len) + "d %-.15g\n"
+
+    F.write("%s\n" % str(name))
+    for (r,R) in enumerate(m):
+      if symmetric:
+        c_max = r+1
+      else:
+        c_max = len(R)
+      for (c,RC) in enumerate(R[:c_max]):
+        F.write(fmt % (r+1, c+1, RC))
+    F.write("\n")
+    F.flush()
+
 
   def compute_Xorth(self):
     (X,Xinv) = Xorth_canonical(self.S)
@@ -105,6 +138,8 @@ class TwoBodyGmsUfmt(object):
     if infile:
       self.read(infile, nbasis)
   def read(self, infile, nbasis, debug=None):
+    """Reads in the matrix elements from a Fortran binary file.
+    """
     dbg = text_output(ifelse(debug, sys.stdout, None), flush=True)
     H2 = numpy.zeros((nbasis,nbasis,nbasis,nbasis), dtype=float)
     self.H2 = H2
@@ -130,6 +165,23 @@ class TwoBodyGmsUfmt(object):
       H2[k,j, i,l] = v
       H2[j,k, l,i] = v
       H2[l,i, j,k] = v
+    F.close()
+  def write(self, outfile):
+    """Writes the matrix elements in the two_body_gms_ufmt binary format.
+    No consideration is taken for the eigthfold symmetry of the integral.
+    """
+    H2 = self.H2
+    nbasis = H2.shape[0]
+    F = fortran_bin_file(outfile, "w")
+    # Must preserve the dtype of i,l,j,k; so we have to use arange
+    # and not do arithmetic on i,j,k,l when writing them out:
+    ibasis = numpy.arange(1, nbasis+1, dtype=numpy.int32)
+    for k in ibasis:
+      for j in ibasis:
+        for l in ibasis:
+          for i in ibasis:
+            F.write_vals(i,l, j,k, H2[i-1,l-1, j-1,k-1])
+    F.close()
 
 
 class EigenGms(object): #{
