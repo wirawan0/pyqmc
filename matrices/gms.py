@@ -1,4 +1,4 @@
-# $Id: gms.py,v 1.7 2011-06-22 18:32:57 wirawan Exp $
+# $Id: gms.py,v 1.8 2011-06-22 19:18:08 wirawan Exp $
 #
 # pyqmc.matrices.gms
 # Created: 20110617
@@ -26,6 +26,7 @@ import numpy.linalg
 from numpy import asmatrix, empty, matrix, zeros_like
 from numpy.linalg import eigh, inv
 
+import wpylib.math
 from wpylib.sugar import ifelse
 from wpylib.iofmt.fortbin import fortran_bin_file
 from wpylib.iofmt.text_input import text_input
@@ -146,7 +147,7 @@ class TwoBodyGmsUfmt(object):
     F = fortran_bin_file(infile)
     S = os.stat(infile)
     fsize = S.st_size
-    rec_desc = (('i', numpy.int32, 4), ('v', float))
+    rec_desc = (('i', numpy.int32, 4), ('v', numpy.float64))
     rec_bytesize = F.byte_length(*rec_desc) + F.default_int(0).itemsize * 2
     rec_count = fsize // rec_bytesize
     dbg("File %s: %d integral records to be read\n" % (infile, rec_count))
@@ -166,21 +167,32 @@ class TwoBodyGmsUfmt(object):
       H2[j,k, l,i] = v
       H2[l,i, j,k] = v
     F.close()
-  def write(self, outfile):
+  def write(self, outfile, eps=wpylib.math.epsilon(numpy.float64)):
     """Writes the matrix elements in the two_body_gms_ufmt binary format.
-    No consideration is taken for the eigthfold symmetry of the integral.
+    The eigthfold symmetry of the integral is considered here, and values
+    smaller than double precision `eps' are ignored.
     """
+    from numpy import abs
     H2 = self.H2
     nbasis = H2.shape[0]
     F = fortran_bin_file(outfile, "w")
     # Must preserve the dtype of i,l,j,k; so we have to use arange
     # and not do arithmetic on i,j,k,l when writing them out:
     ibasis = numpy.arange(1, nbasis+1, dtype=numpy.int32)
+    # In LD format: (i,l) is taken only if (i => l)
     for k in ibasis:
-      for j in ibasis:
+      for j in ibasis[k-1:]:
+        LD_jk = LD(j-1,k-1,nbasis)
+        # LD(j,k)
+        #if j < k: continue
         for l in ibasis:
-          for i in ibasis:
-            F.write_vals(i,l, j,k, H2[i-1,l-1, j-1,k-1])
+          for i in ibasis[l-1:]:
+            #if i < l: continue
+            LD_il = LD(i-1,l-1,nbasis)
+            if LD_il < LD_jk: continue
+            v = H2[i-1,l-1, j-1,k-1]
+            if abs(v) < eps: continue
+            F.write_vals(i,l, j,k, v)
     F.close()
 
 
@@ -384,4 +396,26 @@ class Fort70(object): #{
       #  print self.Xorth_[:,i]
     return self.Xorth_
 #}Fort70 class
+
+
+def LD(i,j,N):
+  """python equivalent of gafqmc_LD on nwchem-gafqmc integral
+  dumper module.
+  Translates a lower-diagonal index (ii >= jj) to linear index
+  0, 1, 2, 3, ...
+  This follows python convention; thus 0 <= i < N, and so also j.
+  """
+  # iskip is row traversal, jskip is column traversal.
+  # (iskip+jskip) is the final array index.
+  if i >= j:
+    ii = i
+    jj = j
+  else:
+    ii = j
+    jj = i
+
+  iskip = ii - jj # + 1
+  #jskip = (jj-1)*N - (jj-2)*(jj-1)/2  # for 1-based
+  jskip = (jj)*N - (jj-1)*(jj)/2  # for 0-based
+  return iskip + jskip
 
