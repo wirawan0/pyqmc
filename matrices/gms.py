@@ -1,4 +1,4 @@
-# $Id: gms.py,v 1.9 2011-06-22 19:37:39 wirawan Exp $
+# $Id: gms.py,v 1.10 2011-06-22 20:34:15 wirawan Exp $
 #
 # pyqmc.matrices.gms
 # Created: 20110617
@@ -91,6 +91,7 @@ class OneBodyGms(object):
     """Writes a matrix in one_body_gms format.
     If symmetric == True, then m[r,c] is written where r >= c is used.
     """
+    m = numpy.asarray(m)
     r_len = len("%d" % m.shape[0])
     c_len = len("%d" % m.shape[1])
     fmt = "%" + str(r_len) + "d %" + str(c_len) + "d %-.15g\n"
