@@ -1,4 +1,4 @@
-# $Id: gaussian.py,v 1.6 2010-12-01 17:20:47 wirawan Exp $
+# $Id: gaussian.py,v 1.7 2011-06-27 20:16:32 wirawan Exp $
 #
 # pyqmc.basis.gaussian module
 # Created: 20100201
@@ -51,6 +51,8 @@ class GTOBasis(object):
     'S': 1, 'P': 3, 'D': 6, 'F': 10, 'G': 15, 'H': 21, 'I': 28,
     'L': 4,  # special (SP)
   }
+  fmt_exp = "%17.8f"    # format for exponent printout
+  fmt_coeff = "%19.9f"  # format for coefficient printout
   def __init__(self, species, srcfile=None, funcs=[], ispher=True):
     self.funcs = []
     self.species = species
@@ -136,10 +138,11 @@ class GTOBasis(object):
     specname = specname or self.species
     if isinstance(indent,int) and indent >= 0: indent = " " * indent
 
+    FMT = "%%s  %s %s" % (self.fmt_exp, self.fmt_coeff)
     return \
       "\n".join([
         "\n".join(["%s%s  %s" % (indent, specname, self.map_nwchem_func_type.get(typ,typ))] + [
-            "%s  %17.8f %19.9f" % (indent, Exp, Coeff) \
+            FMT % (indent, Exp, Coeff) \
               for (Exp,Coeff) in desc
         ]) \
           for (typ, desc) in self.funcs
@@ -153,13 +156,14 @@ class GTOBasis(object):
     basisname = basisname or self.basisname
     if isinstance(indent,int) and indent >= 0: indent = " " * indent
 
+    FMT = "(%s %s)" % (self.fmt_exp, self.fmt_coeff)
     return \
       "\n".join([
         '%s%s: "%s" = (' % (indent, specname, basisname),
         ] + list_join(*[[
           '%s  (%s  ' % (indent, typ) + \
           ("\n%s      " % indent).join([
-             "(%17.8f %19.9f)" % (Exp, Coeff) for (Exp,Coeff) in desc
+             FMT % (Exp, Coeff) for (Exp,Coeff) in desc
           ]) + \
           ')'
         ] for (typ, desc) in self.funcs ]) + \
@@ -174,6 +178,7 @@ class GTOBasis(object):
     basisname = basisname or self.basisname
     if isinstance(indent,int) and indent >= 0: indent = " " * indent
 
+    FMT = "%s %s" % (self.fmt_exp, self.fmt_coeff)
     return \
       "\n".join([
         '%s%s: "%s": [' % (indent, specname, basisname),
@@ -182,7 +187,7 @@ class GTOBasis(object):
                                        ifelse(self.ispher and self.nfuncs_spher_map[typ] >= 5, " puream=1", "")) + \
           '%s   {exp coef:0} = {' % (indent,) + \
           ("\n%s      " % indent).join([""] + [
-             "%17.8f %19.9f" % (Exp, Coeff) for (Exp,Coeff) in desc
+             FMT % (Exp, Coeff) for (Exp,Coeff) in desc
           ]) + \
           '\n%s  })' % (indent,)
         ] for (typ, desc) in self.funcs ]) + \
@@ -198,10 +203,11 @@ class GTOBasis(object):
     specname = specname or self.species
     if isinstance(indent,int) and indent >= 0: indent = " " * indent
 
+    FMT = "%%s %%3d %s %s" % (self.fmt_exp, self.fmt_coeff)
     return \
       "\n".join([
         "\n".join(["%s%s  %d" % (indent, typ, len(desc))] + [
-            "%s %3d %17.8f %19.9f" % (indent, idx+1, Exp, Coeff) \
+            FMT % (indent, idx+1, Exp, Coeff) \
               for (idx, (Exp,Coeff)) in zip(xrange(len(desc)), desc)
         ]) \
           for (typ, desc) in self.funcs
