@@ -1,4 +1,4 @@
-# $Id: slaterdet.py,v 1.2 2011-06-18 03:05:05 wirawan Exp $
+# $Id: slaterdet.py,v 1.3 2011-07-20 16:00:37 wirawan Exp $
 #
 # pyqmc.matrices.slaterdet
 # Created: 20110617
@@ -43,6 +43,9 @@ class Det(object):
       self.dn = self.up
     if (self.up.shape[0] != self.dn.shape[0]):
       raise ValueError("Det: mismatch number of basis funcs for up and down dets")
+    # provide alias for some APIs that require this:
+    self.alpha = self.up
+    self.beta = self.dn
   def nup(self):
     return self.up.shape[1]
   def ndn(self):
