@@ -1,4 +1,4 @@
-# $Id: gms.py,v 1.10 2011-06-22 20:34:15 wirawan Exp $
+# $Id: gms.py,v 1.11 2011-08-18 16:16:09 wirawan Exp $
 #
 # pyqmc.matrices.gms
 # Created: 20110617
@@ -419,6 +419,7 @@ class Fort70(object): #{
       inp.close()
   #}read
 
+  @property
   def Xorth(self):
     if not hasattr(self, "Xorth_"):
       invs = matrix(zeros_like(self.U))
