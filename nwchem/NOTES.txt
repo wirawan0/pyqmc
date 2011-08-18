@@ -1,0 +1,45 @@
+
+Ideas for nwchem class
+----------------------
+
+This will be a pattern for other computational packages
+
+class: pyqmc.nwchem.nwchem
+
+top-level class
+
+  components inside:
+  - nwchem_input  (nwchem input generator)
+  - nwchem_program (program runner)
+  - nwchem site hook, if applicable
+
+
+-----------------------------------------------
+
+class pyqmc.nwchem.nwchem_program(object):
+  """NWChem program."""
+  # These parameters can derive their existence from
+  # the default params stored in site hooks:
+  mem_total
+  mem_global
+  numprocs    # number of MPI processes
+  exe         # executable script/binary
+
+  # --needs site-dependent hooks
+
+
+-----------------------------------------------
+
+
+class pyqmc.nwchem.nwchem_site_hook(object):
+  # What info is required here?
+  sitename: string;
+  # site constraints (how to encapsulate?)
+  walltime: walltime_type; # how to parse this? site-dependent? or a general way?
+  # default executable location
+  exe: pathstring;
+  exe_type: script or binary?
+
+  def copy(self):
+    """Makes a copy of this hook e.g. for customization."""
+
