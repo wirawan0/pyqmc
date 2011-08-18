@@ -1,4 +1,4 @@
-# $Id: slaterdet.py,v 1.3 2011-07-20 16:00:37 wirawan Exp $
+# $Id: slaterdet.py,v 1.4 2011-08-18 16:17:36 wirawan Exp $
 #
 # pyqmc.matrices.slaterdet
 # Created: 20110617
@@ -19,6 +19,7 @@ import numpy
 from numpy import abs as Abs
 # scipy is too sweeping, we will revert to numpy instead:
 from numpy import array, asmatrix, asarray, conj, matrix, ndarray, sqrt
+from numpy import product
 from numpy.linalg import det
 
 class Det(object):
@@ -43,15 +44,26 @@ class Det(object):
       self.dn = self.up
     if (self.up.shape[0] != self.dn.shape[0]):
       raise ValueError("Det: mismatch number of basis funcs for up and down dets")
-    # provide alias for some APIs that require this:
-    self.alpha = self.up
-    self.beta = self.dn
   def nup(self):
     return self.up.shape[1]
   def ndn(self):
     return self.dn.shape[1]
   def nbasis(self):
     return self.up.shape[0]
+
+  # provide alias for some newer APIs that require this:
+  @property
+  def alpha(self):
+    return self.up
+  @alpha.setter
+  def alpha(self, x):
+    self.up = x
+  @property
+  def beta(self):
+    return self.dn
+  @beta.setter
+  def beta(self, x):
+    self.dn = x
 
 
 class MultiDet(object):
@@ -66,7 +78,7 @@ class MultiDet(object):
     if isinstance(mtx, ndarray):
       for (d, ampl) in zip(self.dets, asarray(mtx).reshape(len(self.dets))):
         d.ampl = ampl
-    elif isinstance(mtx, list) or isinstance(mtx, tuple):
+    elif isinstance(mtx, (list, tuple)):
       for (d, ampl) in zip(self.dets, mtx):
         d.ampl = ampl
   def make_ci(self, ampl, cfg, orbs, nup, ndn):
@@ -74,13 +86,43 @@ class MultiDet(object):
     Arguments:
     - ampl: a list of amplitudes, either as 1-dimensional array/matrix or
       Python list.
-    - cfg: list of determinant configurations.
-    - orbs: a list of single-particle orbitals.
+    - cfg: list of determinant configurations. This should be a 2D array
+      where each row is a configuration of the up and down electrons.
+    - orbs: a list of single-particle orbitals, given as a 2D array
+      (where each column is a single-particle orbital).
     '''
-    #ndets =
+    ndets = len(cfg)
+    # this will enforce ampl to have the same length as ndets (and also
+    # make it insensitive to orientation (whether ndets-length array,
+    # or (1 x ndets) or (ndets x 1) matrix.
+    ampl = asarray(ampl).reshape(ndets)
+    orbs = asarray(orbs)
+    nptot = nup + ndn
+    nptot2 = len(cfg[0])
+    if nptot != nptot2:
+      raise ValueError, \
+        "Mismatch total number of particles in `cfg' to that specified in nup+ndn"
+
+    up_cols = xrange(0, nup)
+    dn_cols = xrange(nup, nup+ndn)
+    up_shape = (orbs.shape[0], nup)
+    dn_shape = (orbs.shape[0], ndn)
+
+    self.dets = []
+    #asarray([ orbs.T[i] for i in c[:nup] ]).T,
+    #asarray([ orbs.T[j] for j in c[nup:] ]).T
+    # I use for loop here so we know if there's an error in the
+    # multidet configuration:
+    for c in cfg:
+      newdet = Det(
+                   asarray([ orbs.T[i] for i in c[:nup] ]).T,
+                   asarray([ orbs.T[j] for j in c[nup:] ]).T
+                  )
+      self.dets.append(newdet)
+
     self.set_ampl(ampl)
-    raise NotImplementedError, \
-      "make_ci routine not implemented yet."
+    self.cfg_ci = asarray(cfg)
+    self.ampl_ci = asarray(ampl)
   def norm(self):
     return mdet_ovlp(self)
   def normalize(self, N = None):
@@ -90,7 +132,17 @@ class MultiDet(object):
       n = mdet_ovlp(self)
     self.norm_orig = n
     for d in self.dets: d.ampl *= 1.0 / sqrt(n)
+  @property
+  def ndets(self):
+    return len(self.dets)
 
+  # Allow access in array-like fashion:
+  def __len__(self):
+    return len(self.dets)
+  def __getitem__(self, i):
+    return self.dets[i]
+  def __iter__(self):
+    return self.dets.__iter__()
 
 # Functions:
 
