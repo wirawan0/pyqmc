@@ -1,4 +1,4 @@
-# $Id: gms.py,v 1.11 2011-08-18 16:16:09 wirawan Exp $
+# $Id: gms.py,v 1.12 2011-08-30 19:17:31 wirawan Exp $
 #
 # pyqmc.matrices.gms
 # Created: 20110617
@@ -136,12 +136,84 @@ class TwoBodyGmsUfmt(object):
   (il|jk)  ==> V_ijkl ==> <ij|lk>  ==> H2[i,l,j,k]
 
   """
+  def init_record_info(self):
+    """Numpy datatype representing a two_body_gms_ufmt record entry, which
+    *includes* the Fortran record marker."""
+    lsb_msb = '<' # LSB default
+    int32 = lsb_msb + 'i4'
+    float64 = lsb_msb + 'f8'
+    self.rectype = numpy.dtype([('m1', int32), \
+        ('i', int32), ('l', int32), ('j', int32), ('k', int32), \
+        ('v', float64), \
+        ('m2', int32)])
+    # net bytesize excluding record markers
+    self.recsize_net = self.rectype.itemsize - numpy.dtype(int32).itemsize * 2
+  def make_flat_index(self, i,l,j,k):
+    """Make flat indices.
+    For a 4-dim array containing self.nbasis elements in each dimension.
+    WARNING: C ordering is assumed here."""
+    nb = self.nbasis
+    return ((i * nb + l) * nb + j) * nb + k
   def __init__(self, infile=None, nbasis=None):
+    self.init_record_info()
     if infile:
       self.read(infile, nbasis)
-  def read(self, infile, nbasis, debug=None):
+  def read(self, infile, nbasis, debug=None, blksize=16384):
     """Reads in the matrix elements from a Fortran binary file.
+    This is supposed to be an accelerated implementation.
+    We *bypass* the fortran binary format and slurp the file into memory
+    before doing further processing.
     """
+    assert nbasis > 0
+    self.nbasis = nbasis
+    dbg = text_output(ifelse(debug, sys.stdout, None), flush=True)
+    H2 = numpy.zeros((nbasis,nbasis,nbasis,nbasis), dtype=float)
+    self.H2 = H2
+    nn = nbasis * (nbasis + 1) // 2
+    S = os.stat(infile)
+    fsize = S.st_size
+    # net bytesize excluding marker
+    rec_count = fsize // self.rectype.itemsize
+    dbg("File %s: %d integral records to be read\n" % (infile, rec_count))
+    F = open(infile, "rb")
+    # We use blocked read and assignment to minimize the python overhead
+    for iblk in xrange(0, rec_count, blksize):
+      read_blksize = min(blksize, rec_count - iblk)
+      blob = numpy.fromfile(F, dtype=self.rectype, count=read_blksize)
+      # The following provides a minimal consistency check if the file just read
+      # is indeed a valid two_body_gms_ufmt file:
+      if not numpy.all(blob['m1'] == self.recsize_net):
+        raise RuntimeError, \
+          "Invalid record marker (m1) detected: file %s may be corrupt or of incorrect format." \
+          % (infile,)
+      if not numpy.all(blob['m2'] == self.recsize_net):
+        raise RuntimeError, \
+          "Invalid record marker (m2) detected: file %s may be corrupt or of incorrect format." \
+          % (infile,)
+      # convert to py index (0-based)
+      blob['i'] -= 1
+      blob['l'] -= 1
+      blob['j'] -= 1
+      blob['k'] -= 1
+      get_flat_perm_index = lambda iljk: \
+        self.make_flat_index(blob[iljk[0]], blob[iljk[1]], blob[iljk[2]], blob[iljk[3]])
+      # Use: V2b_inspect.permute_V2b('i','j','l','k',chem=1)
+      # to generate this:
+      v = blob['v']
+      H2.put(get_flat_perm_index('iljk'), v)
+      H2.put(get_flat_perm_index('jkil'), v)
+      H2.put(get_flat_perm_index('likj'), v)
+      H2.put(get_flat_perm_index('kjli'), v)
+      H2.put(get_flat_perm_index('ilkj'), v)
+      H2.put(get_flat_perm_index('kjil'), v)
+      H2.put(get_flat_perm_index('jkli'), v)
+      H2.put(get_flat_perm_index('lijk'), v)
+    F.close()
+  def read0(self, infile, nbasis, debug=None):
+    """Reads in the matrix elements from a Fortran binary file.
+    This is a reference implementation, very slow.
+    """
+    assert nbasis > 0
     dbg = text_output(ifelse(debug, sys.stdout, None), flush=True)
     H2 = numpy.zeros((nbasis,nbasis,nbasis,nbasis), dtype=float)
     self.H2 = H2
@@ -442,18 +514,22 @@ def LD(i,j,N):
   Translates a lower-diagonal index (ii >= jj) to linear index
   0, 1, 2, 3, ...
   This follows python convention; thus 0 <= i < N, and so also j.
+  This should be able to accept numpy.array datatype as i and j
+  parameters.
   """
   # iskip is row traversal, jskip is column traversal.
   # (iskip+jskip) is the final array index.
-  if i >= j:
-    ii = i
-    jj = j
-  else:
-    ii = j
-    jj = i
+  ii = numpy.maximum(i,j)
+  jj = numpy.minimum(i,j)
+  #if i >= j:
+  #  ii = i
+  #  jj = j
+  #else:
+  #  ii = j
+  #  jj = i
 
   iskip = ii - jj # + 1
   #jskip = (jj-1)*N - (jj-2)*(jj-1)/2  # for 1-based
-  jskip = (jj)*N - (jj-1)*(jj)/2  # for 0-based
+  jskip = (jj)*N - (jj-1)*(jj)//2  # for 0-based
   return iskip + jskip
 
