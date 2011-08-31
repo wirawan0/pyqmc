@@ -1,0 +1,77 @@
+See my Research-directions.odt for more info.
+
+The class "calc_base" is a base class for any calculation:
+
+
+  class calc_base(object):
+    # Parameters should be stored together
+    # as attributes in this class, or as a Parameters()
+    # object:
+    p = Parameters()
+      # Mandatory parameters:
+      package = str
+        "abinit"
+          ixc
+          method
+        "nwchem"
+          method: "UHF", "RHF", "ROHF", "MP2", ...
+        "gamess"
+        "psi3" (future)
+        "mpqc" (ongoing development)
+        "gafqmc"
+        "pwqmc77"
+        # Note that one calculation may require another calculation
+        # as its dependency!
+
+    # Mandatory objects:
+    def dir(self, ...):
+    def scratch_dir(self, ...):
+    def large_files_dir(self, ...):
+    def run(self, ...):
+
+    def build_system(self):
+      # builds the molecule/crystal
+      # requires knowledge of atoms, where they are
+
+
+    # Interactive commands:
+    godir(self, **params)
+
+
+The idea is to allow easier modification of an existing calculation.
+
+Challenges:
+* we have a mix of things to specify at different places and must be
+  mixed together to compose a complete calculation.
+  Example:
+    - atoms & positions
+    - package (e.g. nwchem)
+    - method (e.g. UHF)
+    - basis set (e.g. cc-pVTZ or planewave with Ecut=100Ry)
+    - site information
+    - how to run (batch, immediate, ...)
+      serial, parallel, how many processors, etc. -- this is terrible!
+      There is currently no way to encapsulate this.
+
+  How to mix these together in a single calculation instance so as to
+  get the job done (efficiently) without sacrificing readability and
+  flexibility?
+
+* Persistence of states
+  - calculation state should be saved to/retrieved from disk
+    so as to avoid unnecessary recalculation.
+  - calculation state should be tracked using a database.
+    This links to
+  -
+
+This class requires the knowledge of site-specific data (such as directory
+layout, where it is running, etc).
+
+  class site_base(object):
+    # Base dirs are:
+    GAFQMC
+    PWQMC77
+    tbh
+    nwchem # (?)
+    # ... etc etc
+
