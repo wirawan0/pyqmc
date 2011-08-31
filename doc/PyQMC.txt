@@ -1,0 +1,37 @@
+Anatomy of a prep job:
+ * parameters  (default params)
+ * list of accepted keywords
+ * canonical subdir to contain that job, based on the parameters
+
+Make these parts as modular as possible so we can reuse them
+without difficulty like now.
+Principle: things that can change must be put into a separate part
+(e.g. method or member).
+
+
+
+EXAMPLE:
+
+    from wpylib.sugar import Parameters as params
+
+    class prep_qmc_job:
+      defparams = params(nblk=100,
+                         deltau=0.01, ...)
+      def subdir(self, _p=params()):
+        ...
+        return dir # where this job is supposed to run
+      def make_input(self, _p=params(), ...):
+        out = _p.out
+        ... # emit the input file here.
+
+      def __call__(self, _p=None, ...):
+        ...
+        cd self.subdirs(_p)
+        self.make_input(_p)
+        ...
+
+
+
+POLICY
+
+Objects that can be made generic will be moved to wpylib support library.

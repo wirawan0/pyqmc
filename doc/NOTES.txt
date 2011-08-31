@@ -1,0 +1,24 @@
+
+
+nwchem:
+  * generic nwchem invoker
+
+    # total per node
+    nwchem.mem.total = '31000 MB'
+    nwchem.mem.total = 31000   # same effect by default memory unit
+    nwchem.ncpu =
+
+  * specialized nwchem classes for certain site, e.g. PMN
+
+    # in pyqmc.sites.pmn:
+    class nwchem_pmn(nwchem):
+      ...
+
+    from pyqmc.sites.pmn import nwchem_pmn as nwchem_program
+    nwchem = nwchem_program()
+
+    nwchem.fat_node = 1  # enable/disable fat node runs
+    nwchem.ncpu = 32
+    nwchem.submit("job.nw")
+
+
