@@ -1,4 +1,4 @@
-# $Id: quickdirty.py,v 1.1 2010-02-19 18:43:51 wirawan Exp $
+# $Id: quickdirty.py,v 1.2 2011-09-01 20:11:33 wirawan Exp $
 #
 # pyqmc.abinit.quickdirty
 #
@@ -11,7 +11,7 @@ import sys
 import os
 import os.path
 
-from pyqmc.utils.file_utils import open_input_file
+from wpylib.file.file_utils import open_input_file
 
 def abinit_get_bands(file):
   """Reads in ABINIT band information (eigenvalue, occupancy) from an output
