@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# $Id: datfile.py,v 1.1 2011-09-05 03:49:46 wirawan Exp $
+# $Id: datfile.py,v 1.2 2011-09-05 19:29:53 wirawan Exp $
 #
 # pyqmc.gamess.datfile module
 #
@@ -256,7 +256,23 @@ class movecs(object):
     return self
 
   def write(self, outfile):
+    """Writes molecular orbital in GAMESS format.
+    What written depends on the `nbasis` and `udet` attributes, and
+    the data is in the `alpha` and (optionally) `beta` attributes.
+    Comments are not written out; they must be appended manually if you
+    want them.
+    This method use the flexible `text_output` facility, so the outfile
+    can be an open file object or a filename.
+    """
     F = text_output(outfile)
+    F(" $VEC\n")
+    for spin in ifelse(self.udet, ('alpha', 'beta'), ('alpha',)):
+      vecs = getattr(self, spin)
+      for (i,v) in enumerate(vecs.T):
+        for j1 in xrange(0, self.nbasis, 5):
+          j2 = min(j1+5, self.nbasis)
+          F(("%2d%3d" % (i + 1, j1//5 + 1)) + "".join([ "%15.8E" % v[j] for j in xrange(j1,j2)]) + "\n")
+    F(" $END\n")
     F.flush()
 
 
