@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# $Id: datfile.py,v 1.3 2011-09-05 22:26:27 wirawan Exp $
+# $Id: datfile.py,v 1.4 2011-09-07 14:26:00 wirawan Exp $
 #
 # pyqmc.gamess.datfile module
 #
@@ -24,6 +24,9 @@ from pyqmc import PyqmcDataError
 class movecs(object):
   """Basic representation of MO vector block reader for GAMESS *.dat file.
   """
+  def init(self, *_argsl, **_argsd):
+    if _argsl or _argsd:
+      self.read(*argsl, **argsd)
   def read(self, infile, vec_select=1, verbose=0, nbasis=None, out=sys.stdout):
     """Reads off molecular orbital vectors.
     Usage:
@@ -88,10 +91,10 @@ class movecs(object):
     AllVecs = {}
     for txt in F:
       if rx_comment % txt:
-        comments = ""
+        comments = []
         n_comment_lines = 3
       if n_comment_lines > 0:
-        comments += txt
+        comments.append(txt)
         n_comment_lines -= 1
       if rx_vec % txt:
         vec_blk_count += 1
