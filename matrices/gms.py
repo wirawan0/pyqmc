@@ -1,4 +1,4 @@
-# $Id: gms.py,v 1.12 2011-08-30 19:17:31 wirawan Exp $
+# $Id: gms.py,v 1.13 2011-09-07 14:20:57 wirawan Exp $
 #
 # pyqmc.matrices.gms
 # Created: 20110617
@@ -33,6 +33,8 @@ from wpylib.iofmt.text_input import text_input
 from wpylib.iofmt.text_output import text_output
 from pyqmc.matrices.orthog import Xorth_canonical
 from pyqmc.matrices.utils import read_matrix, read_det_matrix
+
+from pyqmc import PyqmcDataError
 
 class OneBodyGms(object):
   """One-body matrix element.
@@ -183,11 +185,11 @@ class TwoBodyGmsUfmt(object):
       # The following provides a minimal consistency check if the file just read
       # is indeed a valid two_body_gms_ufmt file:
       if not numpy.all(blob['m1'] == self.recsize_net):
-        raise RuntimeError, \
+        raise PyqmcDataError, \
           "Invalid record marker (m1) detected: file %s may be corrupt or of incorrect format." \
           % (infile,)
       if not numpy.all(blob['m2'] == self.recsize_net):
-        raise RuntimeError, \
+        raise PyqmcDataError, \
           "Invalid record marker (m2) detected: file %s may be corrupt or of incorrect format." \
           % (infile,)
       # convert to py index (0-based)
@@ -441,7 +443,7 @@ class Fort70(object): #{
     try:
       txt = inp.next().rstrip()
       if (txt != "GAFQMC matrix element file v1"):
-        raise ValueError("Not a GAFQMC matrix element file: " + fname)
+        raise PyqmcDataError("Not a GAFQMC matrix element file: " + fname)
       txt = inp.next()
       # BE WARNED: the parser below is very primitive.
       # It's not intended to be foolproof.
@@ -474,7 +476,7 @@ class Fort70(object): #{
             elif (cols == max(nup,ndn)):
               restricted = True
             else:
-              raise ValueError, \
+              raise PyqmcDataError, \
                 ("Invalid number of columns for WF matrix `%s' (%dx%d): " + \
                 "The valid ncols is either %d or %d") % \
                 (name, rows, cols, nup+ndn,nup)
@@ -483,7 +485,7 @@ class Fort70(object): #{
                                     verbose=verbose)
             self.psiT_det.append(detmp)
           else:
-            raise ValueError, "Unknown matrix name: `" + name + "'"
+            raise PyqmcDataError, "Unknown matrix name: `" + name + "'"
         txt = inp.next()
     except StopIteration:
       inp.close()
