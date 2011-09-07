@@ -35,3 +35,14 @@ EXAMPLE:
 POLICY
 
 Objects that can be made generic will be moved to wpylib support library.
+
+
+
+SITE SPECIFICS
+--------------
+
+Submodules pyqmc.sites.* contains site-specific hooks.
+Variable pyqmc.sites.WHEREAMI contains a short string uniquely identifies
+the site (host) where the script is running.
+This is used for supplying site-specific features, etc.
+

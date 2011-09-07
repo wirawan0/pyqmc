@@ -1,0 +1,35 @@
+Standardized site-specific variables
+------------------------------------
+
+The following variables shall be defined for every site module:
+
+`site_code`:: a simple, unique string indicating the site.
+Unless otherwise needed, it is *best* to make this the same as the
+submodule name in the `pyqmc.sites.*` namespace.
+
+
+Internal API
+------------
+
+`_detect_sites()`:: returns True if this script runs on a given site
+(based on its heuristic detection), False otherwise.
+
+
+Design issues
+-------------
+
+Due to its essential and low-level nature, it is probably wise not to use
+fancy bells and whistles from wpylib (e.g., text_input) in order to avoid
+problems when those modules are upgraded.
+
+
+
+Security and privacy issues
+---------------------------
+
+To avoid issues related to divulged host names and specifics of a host,
+which could be exploited by hackers, I would use SHA1 digest to detect
+host location, as much as I can.
+
+
+
