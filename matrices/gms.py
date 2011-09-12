@@ -1,4 +1,4 @@
-# $Id: gms.py,v 1.13 2011-09-07 14:20:57 wirawan Exp $
+# $Id: gms.py,v 1.14 2011-09-12 21:59:24 wirawan Exp $
 #
 # pyqmc.matrices.gms
 # Created: 20110617
@@ -489,7 +489,7 @@ class Fort70(object): #{
         txt = inp.next()
     except StopIteration:
       inp.close()
-    finally:
+    if not inp.closed:
       inp.close()
   #}read
 

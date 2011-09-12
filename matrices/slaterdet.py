@@ -1,4 +1,4 @@
-# $Id: slaterdet.py,v 1.4 2011-08-18 16:17:36 wirawan Exp $
+# $Id: slaterdet.py,v 1.5 2011-09-12 21:59:24 wirawan Exp $
 #
 # pyqmc.matrices.slaterdet
 # Created: 20110617
@@ -52,25 +52,22 @@ class Det(object):
     return self.up.shape[0]
 
   # provide alias for some newer APIs that require this:
-  @property
-  def alpha(self):
+  def alpha_get(self):
     return self.up
-  @alpha.setter
-  def alpha(self, x):
+  def alpha_set(self, x):
     self.up = x
-  @property
-  def beta(self):
-    return self.dn
-  @beta.setter
-  def beta(self, x):
-    self.dn = x
+  alpha = property(alpha_get, alpha_set, doc="Alpha spin sector")
 
+  def beta_get(self):
+    return self.dn
+  def beta_set(self, x):
+    self.dn = x
+  beta = property(beta_get, beta_set, doc="Beta spin sector")
 
 class MultiDet(object):
   """Basic multi-Slater determinant object.
   Object members:
-  * dets[:] = a list of Det objects, with attached "ampl"
-  # field in it.
+  * dets[:] = a list of Det objects, with attached "ampl" field in it.
   """
   def set_ampl(self,mtx):
     '''Sets the determinant amplitudes. The mtx argument is either a numpy
