@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# $Id: __init__.py,v 1.2 2011-09-01 20:10:37 wirawan Exp $
+# $Id: __init__.py,v 1.3 2011-09-12 20:47:37 wirawan Exp $
 #
 # pyqmc.sites.pmn module
 #
@@ -39,8 +39,11 @@ _site_hostname_sha1 = 'f1e7e1de72c137f5e286567137f2c9af5fc92964'
 
 
 def _detect_site():
-  if strgrep(_site_hostname_sha1, pyqmc.sites._etc_hosts_ipv4hosts_digest):
+  if str_grep(_site_hostname_sha1, pyqmc.sites._etc_hosts_ipv4hosts_digest):
     return True
   else:
     return False
 
+class site_config(pyqmc.sites.site_config_base):
+  """PMN-specific configuration."""
+  site_code = site_code

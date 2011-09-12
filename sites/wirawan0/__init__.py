@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# $Id: __init__.py,v 1.1 2011-09-12 17:07:29 wirawan Exp $
+# $Id: __init__.py,v 1.2 2011-09-12 20:47:39 wirawan Exp $
 #
 # pyqmc.sites.wirawan0 module
 #
@@ -35,10 +35,24 @@ from pyqmc.sites import str_grep
 # Standard information variables
 site_code = 'wirawan0'
 
-
 def _detect_site():
   if os.path.isfile("/etc/.wirawan0"):
     return True
   else:
     return False
 
+class site_config(pyqmc.sites.site_config_base):
+  """wirawan0-specific configuration."""
+  site_code = site_code
+  def init_gafqmc(self):
+    self._defattr(GAFQMC = os.environ['GAFQMC'])
+    self._defattr( \
+      GAFQMC_CALC_ROOT = os.path.join(self.GAFQMC, 'qmc'),
+    )
+    super(site_config, self).init_gafqmc()
+  def init_pwqmc(self):
+    self._defattr(PWQMC77 = os.environ['PWQMC77'])
+    self._defattr( \
+      PWQMC_CALC_ROOT = os.path.join(self.PWQMC77, 'qmc'),
+    )
+    super(site_config, self).init_pwqmc()
