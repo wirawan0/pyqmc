@@ -1,4 +1,4 @@
-# $Id: gaussian.py,v 1.7 2011-06-27 20:16:32 wirawan Exp $
+# $Id: gaussian.py,v 1.8 2011-09-20 22:01:46 wirawan Exp $
 #
 # pyqmc.basis.gaussian module
 # Created: 20100201
@@ -40,6 +40,12 @@ from wpylib.sugar import ifelse, list_join
 class GTOBasis(object):
   """
   Gaussian-type orbital basis.
+  Attributes:
+  . fmt_exp
+  . fmt_coeff
+  . funcs: [ (angmom, [(exp1,coeff1),(exp2,coeff2),...]), ... ]
+  . species
+  . ispher
   """
   # Map function type for packages other than GAMESS
   map_nwchem_func_type = { 'L': 'SP' }
@@ -56,6 +62,7 @@ class GTOBasis(object):
   def __init__(self, species, srcfile=None, funcs=[], ispher=True):
     self.funcs = []
     self.species = species
+    self.ispher = ispher
     if funcs:
       self.funcs = funcs
       self.ispher = ispher
@@ -240,9 +247,29 @@ class GTOBasis(object):
 
 class GTOBasisAtomList(dict):
   """List of basis functions (GTOBasis) for many species, for the same
-  basis function name."""
-  def __init__(self, name):
+  basis function name.
+
+  Attributes:
+  . name: basis name
+  . ispher (if available, determines default "ispher" for newly created
+    GTOBasis objects)
+  . fmt_exp,
+  . fmt_coeff: if defined, used to override class GTOBasis's defaults when
+    creating a new object.
+  """
+  def __init__(self, name, ispher=True):
     self.name = name
+    self.ispher = ispher
+  def get(self, species, srcfile=None, ispher=None):
+    """Gets a GTOBasis class for a given species.
+    If not existing, will create a new one."""
+    if ispher == None: ispher = self.ispher
+    if species not in self:
+      self[species] = GTOBasis(species, srcfile=srcfile, ispher=ispher)
+      if hasattr(self, "fmt_exp"): self[species].fmt_exp = self.fmt_exp
+      if hasattr(self, "fmt_coeff"): self[species].fmt_coeff = self.fmt_coeff
+    return self[species]
+
 
 
 class GTOBasisLib(dict):
@@ -251,7 +278,7 @@ class GTOBasisLib(dict):
   The basis functions are loaded on as-needed basis and cached in memory."""
   def __init__(self):
     import pyqmc
-    self.path = [ os.path.dirname(pyqmc.__file__) + "/libs/basis" ]
+    self.path = [ os.path.join(os.path.dirname(pyqmc.__file__), "libs/basis") ]
     self.fname_map = {
       '6-31++G**': '6-31++Gxx',
       '6-311++G**': '6-311++Gxx',
@@ -262,12 +289,19 @@ class GTOBasisLib(dict):
     return path_search(self.path, self.fname_map.get(basis, basis) + ".basis")
 
   def get(self, basis, species, fmt=None, specname=None, indent=0, ispher=True):
+    """FIXME: Definition of ispher here is only used when creating a new,
+    non-existent object."""
     if basis not in self:
       self[basis] = GTOBasisAtomList(basis)
 
     List = self[basis]
     if species not in List:
-      List[species] = GTOBasis(species, srcfile=self.get_srcfile(basis), ispher=ispher)
+      # will create a new basis object if needed:
+      srcfile = self.get_srcfile(basis)
+      if srcfile == None:
+        raise ValueError, "Cannot find library file for basis: %s" % basis
+      List.get(species, srcfile=srcfile, ispher=ispher)
+      #List[species] = GTOBasis(species, srcfile=self.get_srcfile(basis), ispher=ispher)
 
     if fmt == None:
       return List[species] # raw, low-level data
@@ -275,6 +309,10 @@ class GTOBasisLib(dict):
       return List[species].output_nwchem(specname=specname, indent=indent)
     elif fmt == "gamess":
       return List[species].output_gamess(specname=specname, indent=indent)
+    elif fmt == "psi3":
+      return List[species].output_psi3(specname=specname, indent=indent)
+    elif fmt == "mpqc":
+      return List[species].output_mpqc(specname=specname, indent=indent)
     else:
       raise ValueError, "Invalid output format: " + fmt
 
