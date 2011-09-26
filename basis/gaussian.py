@@ -1,4 +1,4 @@
-# $Id: gaussian.py,v 1.8 2011-09-20 22:01:46 wirawan Exp $
+# $Id: gaussian.py,v 1.9 2011-09-26 21:12:15 wirawan Exp $
 #
 # pyqmc.basis.gaussian module
 # Created: 20100201
@@ -99,7 +99,7 @@ class GTOBasis(object):
     """
     F = text_input(srcfile)
     try:
-      F.seek_text(r'^(?i)spec: *%s$' % (self.species,))
+      F.seek_text(r'^(?i)spec: *%s$' % (re.escape(self.species),))
     except StopIteration:
       raise ValueError, \
             "Basis functions not found for species `%s' in library file `%s'" \
