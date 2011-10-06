@@ -1,4 +1,4 @@
-# $Id: matrices.py,v 1.1 2009-01-09 22:06:11 wirawan Exp $
+# $Id: matrices.py,v 1.2 2011-10-06 19:41:47 wirawan Exp $
 #
 # matrices.py
 # Created: 20080930
@@ -7,12 +7,13 @@
 # AFQMC matrix-related stuff in Python.
 
 import sys
+import numpy
+
 from pyqmc.multidet import Det
-#from scipy import array, asmatrix, empty, matrix, zeros_like
-#from scipy.linalg import inv
 from numpy import array, asmatrix, empty, matrix, zeros_like
 from numpy.linalg import inv
 #from matplotlib.mlab import diagonal_matrix
+from wpylib.iofmt.text_input import text_input
 
 class Fort70(object): #{
   '''Fort70 is a representation of the GAFQMC fort.70-style matrix file.
@@ -26,6 +27,9 @@ class Fort70(object): #{
     "H1" : "H1",
     "psiT_ampl" : "ampl",
   }
+  matrix_complex = [
+    "psiT_ampl",
+  ]
 
   def __init__(self, fname = None, nup = None, ndn = None, verbose = None):
     if fname != None:
@@ -74,8 +78,13 @@ class Fort70(object): #{
             print "Found matrix %s %d %d" % (name, rows, cols)
           if (name in Fort70.matrix_map):
             # Most matrices can be set using the mapping thing above:
-            setattr(self, Fort70.matrix_map[name],
-                    read_matrix(inp, name, rows, cols))
+            if name not in self.matrix_complex:
+              setattr(self, self.matrix_map[name],
+                      read_matrix(inp, name, rows, cols))
+            else:
+              mtx = read_matrix(inp, name, rows, cols*2)
+              mtx = mtx[:,0::2] + 1j * mtx[:,1::2]
+              setattr(self, self.matrix_map[name], mtx)
           elif (name.startswith("psiT_det_")):
             # The psiT number must be in order (1..NPsiTDet) or else the
             # code would read everything erroneously:
@@ -87,8 +96,8 @@ class Fort70(object): #{
               restricted = True
             else:
               raise ValueError, \
-                "Invalid number of columns for WF matrix `%s' (%dx%d): " + \
-                "The valid ncols is either %d or %d" % \
+                ("Invalid number of columns for WF matrix `%s' (%dx%d): " + \
+                "The valid ncols is either %d or %d") % \
                 (name, rows, cols, nup+ndn,nup)
             detmp = read_det_matrix(inp, name, rows, nup, ndn,
                                     cplx=False, restricted=restricted,
@@ -197,6 +206,41 @@ class EigenGms(object): #{
 #}EigenGms class
 
 
+class OneBodyGms(object):
+  """One-body matrix element.
+  This will get the `overlap' (S) and `core hamiltonian' (H1) matrices.
+  """
+
+  def read(self, infile):
+    F = text_input(infile)
+    r = F.next_rec()
+    self.nbasis = int(r[0])
+    self.nelem = int(r[1])
+    (n1, m1) = self.read_matrix(F)
+    (n2, m2) = self.read_matrix(F)
+    self.S = m1
+    self.H1 = m2
+    self.S_name = n1
+    self.H1_name = n2
+    F.close()
+
+  def read_matrix(self, F):
+    """Reads an individual matrix from text stream F, each line in the
+    format:
+
+        row col value
+        row col value
+        ...
+
+    there are self.nelem such rows."""
+    matname = F.next()
+    m1 = F.read_items((0,int), (1,int), (2,float), maxcount=self.nelem)
+    m2 = numpy.zeros((self.nbasis,self.nbasis), dtype=float)
+    for (r,c,v) in m1:
+      m2[r-1,c-1] = v
+      m2[c-1,r-1] = v
+    return (matname, m2)
+
 def read_matrix(infile, name, rows, cols): #{
   '''Reads a matrix from an opened text file. It uses "readline" method of
   the infile object to do the extract text lines one by one.
@@ -209,7 +253,7 @@ def read_matrix(infile, name, rows, cols): #{
     if (txt == ""):
       if (rows != None):
         raise EOFError, \
-          "Unexpected EOF while reading the content of `%s' matrix (%dx%d): " + \
+          "Unexpected EOF while reading the content of `%s' matrix (%sx%d): " + \
           "%d rows read so far" % (name, rows, cols, r)
       else:
         break
@@ -220,8 +264,8 @@ def read_matrix(infile, name, rows, cols): #{
     #print fld, len(fld), cols, (len(fld) - cols)
     if (len(fld) != cols):
       raise ValueError, \
-        "Incorrect number of columns for `%s' matrix (%dx%d): " + \
-        "got %d columns at row %d" % \
+        ("Incorrect number of columns for `%s' matrix (%sx%d): " + \
+        "got %d columns at row %d") % \
         (name, rows, cols, len(fld), r+1)
     rslt.append(map(float, fld))
     r += 1

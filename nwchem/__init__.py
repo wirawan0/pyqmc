@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# $Id: __init__.py,v 1.1 2010-10-29 15:59:44 wirawan Exp $
+# $Id: __init__.py,v 1.2 2011-10-06 19:41:50 wirawan Exp $
 #
 # pyqmc.nwchem module
 #
@@ -7,3 +7,9 @@
 # Created: 20101028
 #
 pass
+
+
+"""
+Ideas:
+- site-specific hooks
+"""
