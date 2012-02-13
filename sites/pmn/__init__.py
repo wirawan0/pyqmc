@@ -47,3 +47,17 @@ def _detect_site():
 class site_config(pyqmc.sites.site_config_base):
   """PMN-specific configuration."""
   site_code = site_code
+  def init(self):
+    super(site_config, self).init()
+    self.init_pmn_dirs()
+  def init_pmn_dirs(self):
+    """Initializes the default PMN-specific dirs:
+    - scratch
+    - lustre shared space
+    """
+    pathcat = os.path.join
+    self._defattr('LSCR_ROOT', pathcat('/lscr', self.USER))
+    self._defattr('SCR1_ROOT', pathcat('/scr1', self.USER))
+    self._defattr('SCR2_ROOT', pathcat('/scr2', self.USER))
+    self._defattr('LUSTRE_ROOT', pathcat('/mnt/lustre', self.USER))
+
