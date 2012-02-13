@@ -118,6 +118,8 @@ def initialize(debug=1):
 class site_config_base(object):
   """
   Generic site-specific configuration.
+  Some customizable variables:
+  - USER  (username on the site)
   Some root directories are also declared here:
   - GAFQMC
   - PWQMC77
@@ -129,9 +131,13 @@ class site_config_base(object):
   - ABINIT_CALC_ROOT
   .
   """
-  def __init__(self):
+  def __init__(self, defaults=None):
+    if defaults:
+      for k in defaults:
+        self._defattr(k, defaults[k])
     self.init()
   def init(self):
+    self._defattr('USER', os.getlogin())
     self.init_gafqmc()
     self.init_pwqmc()
   def _defattr(self, _attr=None, _val=None, **_kwds):
