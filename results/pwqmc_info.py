@@ -15,6 +15,7 @@ import time
 
 import numpy
 
+from wpylib.iofmt.text_input import text_input
 from wpylib.db.result_base import result_base
 
 class pwqmc_info(result_base):
@@ -22,6 +23,9 @@ class pwqmc_info(result_base):
 
   Available information:
   * info_file
+  * trial_wfn_file
+  * nup  ndn  udet
+  * nbasis  LL[0:3]
   * Evar_noconst  Evar  H0
   * Etrial_noconst  Etrial
   * deltau  betablk  nblkstep
@@ -34,15 +38,38 @@ class pwqmc_info(result_base):
     '''Gets all the necessary info (calculation parameters) from the INFO file.
     This is a very old routine.
     We use this as temporary starting point.'''
-    info_file = open(INFO, "r")
+    # FIXME: comment_char is temporarily set to ASCII 0, which should be
+    # an invalid character in this output file.
+    info_file = text_input(INFO, comment_char='\0', skip_blank_lines=False)
     self.clear()
     rslt = self
     rslt['info_file'] = INFO
     for L in info_file:
       Ls = L.strip()
+      ls = Ls.lower()
       flds = Ls.split()
       if len(flds) == 0:
         continue
+      elif Ls.startswith("# of particles:"):
+        u = int(flds[3])
+        d = int(flds[4])
+        if u < d:
+          sys.stderr.write(
+            "pwqmc_info.parse_INFO:Warning: nup < ndn in info file `%s'; autofixing this mistake!\n" % (INFO)
+          )
+          t = u; u = d; d = t
+        rslt['nup'] = u
+        rslt['ndn'] = d
+      elif ls.startswith("majority and minority det are coupled"):
+        rslt['udet'] = False
+      elif ls.startswith("majority and minority det are independent"):
+        rslt['udet'] = True
+      elif flds[0] == "Nbasis":
+        rslt['nbasis'] = int(flds[2])
+      elif ls.startswith("input fft dimension ll ="):
+        rslt['LL'] = (int(flds[5]), int(flds[6]), int(flds[7]))
+      elif ls.startswith("trial wf from input: "):
+        rslt['trial_wfn_file'] = Ls[20:].strip()
       elif flds[0] == "Subtotal":
         rslt["Evar_noconst"] = float(flds[2])
       elif flds[0] == "Variational" and flds[1] == "energy":
