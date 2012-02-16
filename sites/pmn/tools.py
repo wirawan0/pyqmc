@@ -1,14 +1,14 @@
 #!/usr/bin/python
 # $Id: tools.py,v 1.1 2011-08-31 20:15:26 wirawan Exp $
 #
-# pyqmc.sites.pmn module
+# pyqmc.sites.pmn.tools module
 #
 # Wirawan Purwanto
 # Created: 20110831
 #
 
 """
-pyqmc.sites.pmn
+pyqmc.sites.pmn.tools
 
 Site-specific support for pyqmc library.
 This module is part of PyQMC project.
