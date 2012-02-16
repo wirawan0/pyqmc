@@ -43,6 +43,17 @@ def is_python_identifier(s):
   """Verifies if this is a `valid' python identifier."""
   return py_id_rx.search(s)
 
+def getlogin():
+  try:
+    return os.getlogin()
+  except:
+    pass
+  # Fallback. This is a problem in non-login remote access, e.g.
+  # using SLURM to access compute node interactively:
+  try:
+    return os.environ['USER']
+  except:
+    raise RuntimeError, "Failure getting user login info."
 
 def _init_sites():
   """Initializes this module. Generally only needs to be called once."""
@@ -137,7 +148,7 @@ class site_config_base(object):
         self._defattr(k, defaults[k])
     self.init()
   def init(self):
-    self._defattr('USER', os.getlogin())
+    self._defattr('USER', getlogin())
     self.init_gafqmc()
     self.init_pwqmc()
   def _defattr(self, _attr=None, _val=None, **_kwds):
