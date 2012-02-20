@@ -39,6 +39,7 @@ def get_gafqmc_run_snapshot(rundirs):
   output is stored temporarily.
   """
   from wpylib.regexps import regex
+  from os.path import abspath, dirname, join
   destbasedir = tempfile.mkdtemp(dir=os.getcwd())
   print "Snapshot data is located in subdir: ", destbasedir
   # This is the standard location for rundir on local scratch as
@@ -49,6 +50,7 @@ def get_gafqmc_run_snapshot(rundirs):
   for (i, r) in enumerate(rundirs):
     destdir = os.path.join(destbasedir, "part%04d" % i)
     os.mkdir(destdir)
+    os.symlink(abspath(dirname(r)), join(destdir,"rsltdir"))
     rlink = os.path.realpath(r)
     if not (rundir_rx % rlink):
       raise ValueError, "Unparseable dirname: %s" % rlink
