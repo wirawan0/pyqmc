@@ -49,7 +49,8 @@ def is_qmc_output_finished(filename):
 
 
 
-def check_qmc(fname=None, archive=False, x=(), xflags=(), reblk=(2,20,2)):
+def check_qmc(fname=None, archive=False, xflags=(), eqlb=(1,), reblk=(2,20,2),
+              eqlb_flags=(), reblk_flags=()):
   """Checks the QMC results (INFO file) using my stand-alone QMC inspect tools.
   x is the extra flags to be passed on to check_* tools."""
 
@@ -68,7 +69,8 @@ def check_qmc(fname=None, archive=False, x=(), xflags=(), reblk=(2,20,2)):
       raise ValueError, "Not a QMC output file: " + f
 
   if archive:
-    farch = open("analysis.txt", "a")
+    fnarch = ifelse(isinstance(archive, basestring), archive, "analysis.txt")
+    farch = open(fnarch, "a")
     def prn(x):
       sys.stdout.write(str(x) + "\n")
       farch.write(str(x) + "\n")
@@ -82,18 +84,27 @@ def check_qmc(fname=None, archive=False, x=(), xflags=(), reblk=(2,20,2)):
           ifelse(len(fname) > 0, [""],[]) + \
           [ os.path.abspath(f) for f in fname ]
       ))
-  x = tuple(x) + tuple(xflags)
-  if len(x) > 0:
-    prn("Extra flags: " + " ".join(x))
   for f in fname:
     if not is_qmc_output_finished(f):
       prn("Warning: calculation unfinished yet: %s" % f)
+  prn("")
+
   # Use the formal tool names here:
   #sh.run("check_eqlb", (fname, "1"))
-  prn("EQUILIBRATION/QMC RAW ENERGIES:")
-  prn(sh.pipe_out(("check_eqlb",) + fname + ("1",) + x).replace('\x0c', ''))
-  prn("REBLOCKING:")
-  reblk_info = tuple([ str(vv) for vv in reblk ])
-  prn(sh.pipe_out(("check_reblocking",) + fname + reblk_info + ("plt", "txt") + x).replace('\x0c', ''))
+  if eqlb:
+    prn("EQUILIBRATION/QMC RAW ENERGIES:")
+    eqlb_info = tuple([ str(vv) for vv in eqlb ])
+    x = tuple(xflags) + tuple(eqlb_flags)
+    if len(x) > 0:
+      prn("Extra flags: " + " ".join(x))
+    prn(sh.pipe_out(("check_eqlb",) + fname + eqlb_info + x).replace('\x0c', ''))
+  
+  if reblk:
+    prn("REBLOCKING:")
+    reblk_info = tuple([ str(vv) for vv in reblk ])
+    x = tuple(xflags) + tuple(reblk_flags)
+    if len(x) > 0:
+      prn("Extra flags: " + " ".join(x))
+    prn(sh.pipe_out(("check_reblocking",) + fname + reblk_info + ("plt", "txt") + x).replace('\x0c', ''))
   if archive: farch.close()
 
