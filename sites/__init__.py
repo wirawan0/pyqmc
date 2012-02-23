@@ -21,6 +21,7 @@ import sys
 _sites_supported = [
 # Public sites
   'pmn',
+  'avocado',
 # Private sites
   'wirawan0',
 ]
@@ -44,6 +45,14 @@ def is_python_identifier(s):
   return py_id_rx.search(s)
 
 def getlogin():
+  """Fortified getlogin procedure to get the current username.
+  In case os.getlogin() failed, we fall back to USER environment
+  variable.
+
+  Ref:
+  http://old.nabble.com/-Bug-171631--New%3A-Python-function-os.getlogin-fails-in-konsole-td19661351.html
+  """
+  # FIXME: use pwd.getpwuid() before trying USER variable!
   try:
     return os.getlogin()
   except:
