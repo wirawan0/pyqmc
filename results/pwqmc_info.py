@@ -24,7 +24,8 @@ class pwqmc_info(result_base):
   Available information:
   * info_file
   * trial_wfn_file
-  * nup  ndn  udet
+  * nelec_up  nelec_dn  udet
+  * nup  ndn   (deprecated name of nelec_up and nelec_dn)
   * nbasis  LL[0:3]
   * Evar_noconst  Evar  H0
   * Etrial_noconst  Etrial
@@ -60,6 +61,8 @@ class pwqmc_info(result_base):
           t = u; u = d; d = t
         rslt['nup'] = u
         rslt['ndn'] = d
+        rslt['nelec_up'] = u
+        rslt['nelec_dn'] = d
       elif ls.startswith("majority and minority det are coupled"):
         rslt['udet'] = False
       elif ls.startswith("majority and minority det are independent"):
