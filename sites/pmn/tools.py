@@ -60,7 +60,7 @@ def get_gafqmc_run_snapshot(rundirs):
     sh.run('scp', ('-p', '%s:%s/INFO' % (host, rlink), '%s/INFO' % destdir))
 
 
-def fetch_gafqmc_run_output(rundirs, force_update=False):
+def fetch_gafqmc_run_output(rundirs, force_update=False, save_walkers=False):
   """Fetches the GAFQMC run snapshot (INFO files and some additional files)
   in bulk.
   Putting them the corresponding result subdirectory for archival.
@@ -76,8 +76,18 @@ def fetch_gafqmc_run_output(rundirs, force_update=False):
   #destbasedir = tempfile.mkdtemp(dir=os.getcwd())
   #print "Snapshot data is located in subdir: ", destbasedir
   rundir_rx = regex(r'/state/partition1/' + os.environ['USER'] + '/([0-9]+)\.([-_a-zA-Z0-9]+)\.run')
-  if isinstance(rundirs, str):
+  if isinstance(rundirs, basestring):
     rundirs = [rundirs]
+  files_to_fetch = [
+    'INFO',
+    'stdout',
+    'fort.17',
+    'fort.15',
+    '*.in',
+  ]
+  if save_walkers:
+    files_to_fetch += [ 'W_old_run_000' ]
+  xfiles_to_fetch = ",".join(files_to_fetch)
   for (i, r) in enumerate(rundirs):
     destdir = os.path.dirname(r)
     if destdir == '': destdir = '.'
@@ -97,7 +107,7 @@ def fetch_gafqmc_run_output(rundirs, force_update=False):
           continue
     print "Fetching: %s -> %s" % (r, rlink)
     # the rsync flags follow those in run-gafqmc.sh
-    sh.run('rsync', ('-ptvb', '%s:%s/{INFO,stdout,fort.17,fort.15,*.in}' % (host, rlink), '%s/' % destdir))
+    sh.run('rsync', ('-ptvb', '%s:%s/{%s}' % (host, rlink, xfiles_to_fetch), '%s/' % destdir))
 
 
 def cnode_shell(host, args, **opts):
