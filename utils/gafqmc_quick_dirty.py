@@ -25,13 +25,14 @@ import sys
 import time
 
 import wpylib.shell_tools as sh
+from wpylib.iofmt.text_input import text_input, head, tail
 from wpylib.iofmt.text_output import text_output
 from wpylib.text_tools import str_grep
 from wpylib.sugar import ifelse
 
 
 def is_qmc_output(filename):
-  snippet = sh.pipe_out(("head", "-n", "400", filename), split=True)
+  snippet = head(filename, 400)
   if str_grep("GAFQMC - Generic auxiliary-field quantum Monte Carlo", snippet):
     return True
   elif str_grep("Generic Auxiliary field Quantum Monte Carlo (GAFQMC)", snippet):
@@ -42,7 +43,7 @@ def is_qmc_output(filename):
 
 def is_qmc_output_finished(filename):
   if is_qmc_output(filename):
-    snippet = sh.pipe_out(("tail", "-n", "400", filename), split=True)
+    snippet = tail(filename, 400)
     if str_grep("Summary of energies:", snippet):
       return True
   return False
