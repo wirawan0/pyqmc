@@ -63,6 +63,11 @@ class nwchem_output(result_base):
       (regex(r'^\s*CCSD\(T\) total energy */ *hartree *= *([-+eE0-9.]+)'), 'E_CCSD_T', float),
       (regex(r'^\s*Nuclear repulsion energy *= *([-+eE0-9.]+)'),           'E_nuclear', float),
       (regex(r'^\s*Total MP2 energy\s+([-+eE0-9.]+)'),                     'E_MP2', float), # old MP2 module
+
+      # The following are not that great.
+      # We may want to use stricter scanner which takes into account the context
+      # (which section) we are in
+      (regex(r'^\s*functions\s*=\s*([0-9]+)\s*$'),                         'nbasis', int),
     ]
 
     for L in txtfile:
@@ -72,7 +77,7 @@ class nwchem_output(result_base):
       else:
         for (pat, act, arg1) in search_patterns:
           if pat % L:
-            if isinstance(act, str):
+            if isinstance(act, basestring):
               rslt[act] = arg1(pat[1])
               break
 
