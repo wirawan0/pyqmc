@@ -89,7 +89,7 @@ class convert_ene2hdf5(object):
         "Trial energy is not found in the INFO file: %s" % (info_file)
 
     use_tmpdir = False
-    if isinstance(src, str):
+    if isinstance(src, basestring):
       if src.endswith(".tar.lzma"):
         os.chdir(p.TMPDIR)
         sh.system("rm -rf *" % (p.TMPDIR,)) # always start clean

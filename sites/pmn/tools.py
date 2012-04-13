@@ -45,7 +45,7 @@ def get_gafqmc_run_snapshot(rundirs):
   # This is the standard location for rundir on local scratch as
   # defined by run-gafqmc.sh:
   rundir_rx = regex(r'/state/partition1/' + os.environ['USER'] + '/([0-9]+)\.([-_a-zA-Z0-9]+)\.run')
-  if isinstance(rundirs, str):
+  if isinstance(rundirs, basestring):
     rundirs = [rundirs]
   for (i, r) in enumerate(rundirs):
     destdir = os.path.join(destbasedir, "part%04d" % i)

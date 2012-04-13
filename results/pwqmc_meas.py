@@ -1597,7 +1597,7 @@ def meas_glob(files, ext="ene"):
   from glob import glob
   if files == None:
     files = sorted(glob("pwaf-*." + ext))
-  elif isinstance(files, str):
+  elif isinstance(files, basestring):
     if os.path.isdir(files):
       files = sorted(glob(files + "/pwaf-*." + ext))
     else:

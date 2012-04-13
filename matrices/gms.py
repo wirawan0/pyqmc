@@ -293,7 +293,7 @@ class EigenGms(object): #{
     '''
     if hasattr(infile, "next"):
       self_open = False
-    elif isinstance(infile, str): # if a string, let's open the file
+    elif isinstance(infile, basestring): # if a string, let's open the file
       if verbose: print "Reading eigen_gms from file " + infile
       infile = open(infile, "r")
       self_open = True

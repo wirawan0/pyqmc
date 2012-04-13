@@ -138,7 +138,7 @@ def kptstr(kpt):
   kpt is either a string (in which case it is passed verbatimly), or
   a 3-vector (list, tuple, numpy array, whatever indexable with integers
   0, 1, 2)."""
-  if isinstance(kpt, str):
+  if isinstance(kpt, basestring):
     # FIXME: must check assumption
     # But this is also nice for "*" kind of wildcard.
     # Assume already +3425+3425+3425 format:
