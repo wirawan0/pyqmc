@@ -118,18 +118,18 @@ class abinit_dataset(result_base):
                   break
 
       elif rx.eigen_begin % L:
-        spin = rx.eigen_begin['spin'].lower()
-        dbg("** Eigenvector sector: spin = %s **\n" % spin)
         self['nkpt'] = int(rx.eigen_begin['nkpt'])
-        if spin == 'up':
-          self['udet'] = True
-          spins = ('up', 'dn')
-          wfk = result_base(up=[], dn=[])
-        elif spin == None:
+        spin = rx.eigen_begin['spin']
+        dbg("** Eigenvector sector: spin = %s **\n" % spin)
+        if spin == None:
           self['udet'] = False
           spins = ('up',)
           wfk = result_base(up=[])
           wfk['dn'] = wfk['up']
+        elif str(spin).lower() == 'up':
+          self['udet'] = True
+          spins = ('up', 'dn')
+          wfk = result_base(up=[], dn=[])
         else:
           raise PyqmcDataError, "Error: Unknown spin type detected"
         self['wfk'] = wfk
