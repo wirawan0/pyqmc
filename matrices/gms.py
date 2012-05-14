@@ -138,6 +138,18 @@ class TwoBodyGmsUfmt(object):
   (il|jk)  ==> V_ijkl ==> <ij|lk>  ==> H2[i,l,j,k]
 
   """
+  V2b_permutation_options = {
+    0: 0,
+    False: 0,
+    None: 0,
+    1: 1,
+    'standard': 1,
+    'general': 1,
+    2: 2,
+    'real': 2,
+    'default': 2, # the default option!
+  }
+
   def init_record_info(self):
     """Numpy datatype representing a two_body_gms_ufmt record entry, which
     *includes* the Fortran record marker."""
@@ -156,17 +168,29 @@ class TwoBodyGmsUfmt(object):
     WARNING: C ordering is assumed here."""
     nb = self.nbasis
     return ((i * nb + l) * nb + j) * nb + k
-  def __init__(self, infile=None, nbasis=None):
+  def __init__(self, infile=None, nbasis=None, perm='default'):
     self.init_record_info()
     if infile:
-      self.read(infile, nbasis)
-  def read(self, infile, nbasis, debug=None, blksize=16384):
+      self.read(infile, nbasis, perm=perm)
+  def read(self, infile, nbasis, debug=None, blksize=16384, perm='default'):
     """Reads in the matrix elements from a Fortran binary file.
     This is supposed to be an accelerated implementation.
     We *bypass* the fortran binary format and slurp the file into memory
     before doing further processing.
+
+    Permutation flags (`perm`) honored:
+    * 0, False, None = No permutation  (generally you don't want this except for
+      debugging)
+    * 1, 'standard' = standard fourfold permutation for a Hermitian two-body
+      Hamiltonian
+    * 2, 'real' = eightfold permutation for a Hermitian two-body
+      Hamiltonian with real basis functions in real space
     """
     assert nbasis > 0
+    try:
+      perm = self.V2b_permutation_options[perm]
+    except KeyError:
+      raise ValueError, "Invalid permutation options: `%s'" % perm
     self.nbasis = nbasis
     dbg = text_output(ifelse(debug, sys.stdout, None), flush=True)
     H2 = numpy.zeros((nbasis,nbasis,nbasis,nbasis), dtype=float)
@@ -177,6 +201,7 @@ class TwoBodyGmsUfmt(object):
     # net bytesize excluding marker
     rec_count = fsize // self.rectype.itemsize
     dbg("File %s: %d integral records to be read\n" % (infile, rec_count))
+    dbg("Matrix element permutation flag = %s\n" % (perm))
     F = open(infile, "rb")
     # We use blocked read and assignment to minimize the python overhead
     for iblk in xrange(0, rec_count, blksize):
@@ -203,13 +228,15 @@ class TwoBodyGmsUfmt(object):
       # to generate this:
       v = blob['v']
       H2.put(get_flat_perm_index('iljk'), v)
-      H2.put(get_flat_perm_index('jkil'), v)
-      H2.put(get_flat_perm_index('likj'), v)
-      H2.put(get_flat_perm_index('kjli'), v)
-      H2.put(get_flat_perm_index('ilkj'), v)
-      H2.put(get_flat_perm_index('kjil'), v)
-      H2.put(get_flat_perm_index('jkli'), v)
-      H2.put(get_flat_perm_index('lijk'), v)
+      if (perm == 1 or perm == 2):
+        H2.put(get_flat_perm_index('jkil'), v)
+        H2.put(get_flat_perm_index('likj'), v)  # TODO: complex conjugate
+        H2.put(get_flat_perm_index('kjli'), v)  # TODO: complex conjugate
+        if (perm == 1 or perm == 2):
+          H2.put(get_flat_perm_index('ilkj'), v)
+          H2.put(get_flat_perm_index('kjil'), v)
+          H2.put(get_flat_perm_index('jkli'), v)
+          H2.put(get_flat_perm_index('lijk'), v)
     F.close()
   def read0(self, infile, nbasis, debug=None):
     """Reads in the matrix elements from a Fortran binary file.
