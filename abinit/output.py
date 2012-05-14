@@ -17,12 +17,43 @@ import sys
 import time
 import weakref
 
+from wpylib.params.params_struct import Struct as struct
 from wpylib.regexps import regex
 from wpylib.iofmt.text_input import text_input
 from wpylib.iofmt.text_output import text_output
 from wpylib.db.result_base import result_base
 from pyqmc import PyqmcDataError
 from warnings import warn
+
+# see http://www.abinit.org/documentation/helpfiles/for-v6.10/input_variables/vardev.html#istwfk
+istwfk_special_kpt = [
+  (2, (0.0, 0.0, 0.0)),
+  (3, (0.5, 0.0, 0.0)),
+  (4, (0.0, 0.0, 0.5)),
+  (5, (0.5, 0.0, 0.5)),
+  (6, (0.0, 0.5, 0.0)),
+  (7, (0.5, 0.5, 0.0)),
+  (8, (0.0, 0.5, 0.5)),
+  (9, (0.5, 0.5, 0.5)),
+]
+
+DEBUG_LEVEL = 0
+
+def is_special_kpt(kpt, istwfk):
+  for (istwfk1, kpt1) in istwfk_special_kpt:
+    if (istwfk == 0 or istwfk == istwfk1) and (kpt == kpt1):
+      return True
+  return False
+
+def get_num_pw(npw, kpt, istwfk):
+  if is_special_kpt(kpt, istwfk):
+    if kpt == (0,0,0):
+      return npw * 2 + 1
+    else:
+      return npw * 2
+  else:
+    return npw
+
 
 class abinit_dataset(result_base):
   """A single dataset of ABINIT calculation.
@@ -40,6 +71,8 @@ class abinit_dataset(result_base):
   converted to python-based (e.g. the k-point numbering starts from zero
   instead of one)."""
   class rx_:
+    # This sneaky info can be used to determine # of planewaves:
+    kpt_npw = regex(r'P newkpt: treating\s+(?P<nband>[0-9]+) bands with npw=\s*(?P<npw>[0-9]+) for ikpt=\s*(?P<ikpt>[0-9]+)')
     scf_begin = regex(r'^\s*iter\s+Etot\(hartree\)\s+deltaE\(h\)') # marker of SCF block
     scf_line1 = regex(r'^\s*ETOT\s*[0-9\*]+\s+(?P<Etot>[-+eE0-9.]+)\s+(?P<Ediff>[-+eE0-9.]+)')
     scf_convg1 = regex(r'^\s*At SCF step\s+(?P<numscf>[0-9]+)\s*,\s*etot is converged')
@@ -58,13 +91,14 @@ class abinit_dataset(result_base):
     ]
     eigen_begin = regex(r'^\s*Eigenvalues \(hartree\) for nkpt=\s*(?P<nkpt>[0-9]+)\s*k points(?:, SPIN (?P<spin>[A-Za-z]+))?:')
     eigen_kpt1 = regex(r'^\s*kpt#\s*(?P<ikpt>[0-9]+),\s*nband=\s*(?P<nband>[0-9]+), wtk=\s*(?P<wtk>[.0-9]+), kpt=\s*(?P<kx>[-+.0-9]+)\s+(?P<ky>[-+.0-9]+)\s+(?P<kz>[-+.0-9]+)')
+    eigen_kpt_stop = regex(r'^\s*prteigrs\s*: .*do not print more k-points')
     densph_begin = regex(r'^\s*Atom\s+Sphere radius\s+Integrated_up_density\s+Integrated_dn_density\s+Total[^\s]+\s+Diff')
     dataset_end = regex(r'^\s*==\s*(?:DATASET\s+[0-9]+|END DATASET\(S\))\s+=+')
 
   class dt_:
     scf_cycle = numpy.dtype([('Etot', float), ('deltaE', float)])
 
-  def parse_dataset_results_(self, baserec, F):
+  def parse_dataset_results_(self, baserec, F, index):
     """Parses a dataset: the `result' part.
     The """
 
@@ -76,13 +110,39 @@ class abinit_dataset(result_base):
     except:
       dbg = text_output(None) # sys.stdout, flush=True)
     self['MyErrors'] = 0
+    self['dataset_index'] = index
     self['parent_'] = weakref.ref(baserec)
+
+    # We can get the following from the outvars section of the output preamble
+    def getoutvar(kwd, default, mapfunc=None):
+      try:
+        r = getattr(baserec.outvars, kwd + str(index))
+      except AttributeError:
+        r = getattr(baserec.outvars, kwd, default)
+      try:
+        return map(mapfunc, r)
+      except:
+        if mapfunc == None:
+          return r
+        else:
+          try:
+            return mapfunc(r)
+          except:
+            return r
+    #ngfft = getattr(baserec.outvars, "ngfft%d" % index, getattr(baserec.outvars, "ngfft", None))
+    self['ngfft'] = tuple(getoutvar("ngfft", None, mapfunc=int))
+    istwfk = getoutvar("istwfk", None, mapfunc=int)
+    kpt_npw = {}
+
     for L in F:
       dbg("L:  %s\n" % L.rstrip())
       if rx.dataset_end % L:
         dbg("** end dataset detected **\n")
         F.file.push(L) # put back the text data to the file
         break
+      elif rx.kpt_npw % L:
+        # record the number of planewaves (w/o istwfk correction)
+        kpt_npw[int(rx.kpt_npw['ikpt'])-1] = int(rx.kpt_npw['npw'])
       elif rx.scf_begin % L:
         # Extracts the SCF cycle data plus whether it converges
         dbg("** SCF section **\n")
@@ -118,7 +178,9 @@ class abinit_dataset(result_base):
                   break
 
       elif rx.eigen_begin % L:
+        # Begins reading info of eigensolutions here: eigenvals, occ, ...
         self['nkpt'] = int(rx.eigen_begin['nkpt'])
+        if (istwfk == None): istwfk = (0,) * self['nkpt']
         spin = rx.eigen_begin['spin']
         dbg("** Eigenvector sector: spin = %s **\n" % spin)
         if spin == None:
@@ -140,7 +202,12 @@ class abinit_dataset(result_base):
             L2 = F.next()
             dbg("  spin %s kpt %d: %s\n" % (s, k, L2.strip()))
             if not (rx.eigen_kpt1 % L2):
-              raise PyqmcDataError, "Expected `kpt#' line, got `%s'" % L2
+              if (rx.eigen_kpt_stop % L2):
+                warn("Cannot parse all kpt data; reason: `%s'" % L2)
+                self['MyErrors'] += 1
+                break
+              else:
+                raise PyqmcDataError, "Expected `kpt#' line, got `%s'" % L2
             e = rx.eigen_kpt1
             # CAVEAT: The results here have a very limited precision.
             wfk_s_k = result_base(
@@ -149,6 +216,11 @@ class abinit_dataset(result_base):
               wtk = float(e['wtk']),
               kpt = (float(e['kx']), float(e['ky']), float(e['kz']),),
             )
+            npwbasis = get_num_pw(kpt_npw[k], wfk_s_k.kpt, istwfk[k])
+            if DEBUG_LEVEL >= 10:
+              print (kpt_npw[k], wfk_s_k.kpt, istwfk[k]), "->", npwbasis
+            wfk_s_k['npwbasis'] = npwbasis
+            wfk_s_k['istwfk'] = istwfk[k]
             if k != wfk_s_k['ikpt']:
               warn("Unexpected kpt index in Abinit output: given %d, expecting %d" \
                    % (wfk_s_k['ikpt'], k))
@@ -223,12 +295,13 @@ class abinit_output(result_base):
   class rx_:
     abinit_version = regex(r'^[. ]Version\s+(?P<version>[^\s]+)\s+of ABINIT')
     dataset_begin = regex(r'^\s*==\s*DATASET\s+(?P<dataset>[0-9]+)\s+=+')
+    outvars_begin = regex(r'-outvars: echo values of preprocessed input variables')
 
   def parse_file_(self, filename):
     """Extracts information from an abinit text output file.
     Right now, this parser is only good for single-point calculations
     (i.e. no multijob or geometry optimization at this point)."""
-  
+
     rx = self.rx_
 
     self.clear()
@@ -249,8 +322,43 @@ class abinit_output(result_base):
       if rx.dataset_begin % L:
         dset = int(rx.dataset_begin['dataset'])
         dataset[dset] = abinit_dataset()
-        dataset[dset].parse_dataset_results_(self, txtfile)
-        dataset[dset]['dataset_index'] = dset
+        dataset[dset].parse_dataset_results_(self, txtfile, index=dset)
+      elif rx.outvars_begin % L:
+        self.parse_outvars_(txtfile)
 
     return self
+
+  def parse_outvars_(self, txtfile):
+    """Parses the outvars section at the beginning of abinit output.
+    """
+    Vars = struct()
+    self.outvars = Vars
+    x = struct()
+    x.vname = None
+    x.vval = []
+    def vflush(x):
+      if x.vname != None:
+        setattr(Vars, x.vname, tuple(x.vval))
+      x.vname = None
+      x.vval = []
+    for L in txtfile:
+      F = L.split()
+      if len(F) == 0:
+        break
+      if F[1] == ':':
+        # some comments show up like this:
+        #   outvar1 : prtvol=0, do not print more k-points.
+        #   prtocc : prtvol=0, do not print more k-points.
+        # we ignore those
+        continue
+      if F[0] == 'P':
+        del F[0]
+      if F[0][0].isalpha():
+        vflush(x)
+        x.vname = F[0]
+        x.vval = F[1:]
+      else:
+        x.vval += F
+    vflush(x)
+
 
