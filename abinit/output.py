@@ -66,6 +66,9 @@ class abinit_dataset(result_base):
   - nkpt
   - wfk[spin][ikpt] = eigensolution of a particular spin sector (`up' or `dn')
     and k-point (0, 1, ...nkpt-1)
+  - ngfft
+  - istwfk
+  - npwbasis   (deduced: beware)
 
   IMPORTANT: For consistency with python-style processing, all indices are
   converted to python-based (e.g. the k-point numbering starts from zero
