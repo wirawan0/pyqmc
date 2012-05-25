@@ -186,6 +186,7 @@ class TwoBodyGmsUfmt(object):
     * 2, 'real' = eightfold permutation for a Hermitian two-body
       Hamiltonian with real basis functions in real space
     """
+    from numpy import conj
     assert nbasis > 0
     try:
       perm = self.V2b_permutation_options[perm]
@@ -230,9 +231,10 @@ class TwoBodyGmsUfmt(object):
       H2.put(get_flat_perm_index('iljk'), v)
       if (perm == 1 or perm == 2):
         H2.put(get_flat_perm_index('jkil'), v)
-        H2.put(get_flat_perm_index('likj'), v)  # TODO: complex conjugate
-        H2.put(get_flat_perm_index('kjli'), v)  # TODO: complex conjugate
-        if (perm == 1 or perm == 2):
+        H2.put(get_flat_perm_index('likj'), conj(v))
+        H2.put(get_flat_perm_index('kjli'), conj(v))
+        if (perm == 2):
+          # Only usable if the basis orbitals are real in real-space.
           H2.put(get_flat_perm_index('ilkj'), v)
           H2.put(get_flat_perm_index('kjil'), v)
           H2.put(get_flat_perm_index('jkli'), v)
