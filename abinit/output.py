@@ -149,6 +149,7 @@ class abinit_dataset(result_base):
       elif rx.scf_begin % L:
         # Extracts the SCF cycle data plus whether it converges
         dbg("** SCF section **\n")
+        L2 = ""
         for L2 in F:
           #dbg("L2: %s\n" % L2.rstrip())
           if not (rx.scf_line1 % L2):
