@@ -168,10 +168,10 @@ class TwoBodyGmsUfmt(object):
     WARNING: C ordering is assumed here."""
     nb = self.nbasis
     return ((i * nb + l) * nb + j) * nb + k
-  def __init__(self, infile=None, nbasis=None, perm='default'):
+  def __init__(self, infile=None, nbasis=None, debug=None, blksize=16384, perm='default'):
     self.init_record_info()
     if infile:
-      self.read(infile, nbasis, perm=perm)
+      self.read(infile, nbasis, debug=debug, blksize=blksize, perm=perm)
   def read(self, infile, nbasis, debug=None, blksize=16384, perm='default'):
     """Reads in the matrix elements from a Fortran binary file.
     This is supposed to be an accelerated implementation.
