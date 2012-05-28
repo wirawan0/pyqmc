@@ -14,6 +14,9 @@ Site-specific support for pyqmc library.
 This module is part of PyQMC project.
 
 This module provides specific tools for CPD's PMN Opteron cluster.
+Functions contained here are supposed to be run on PMN front-end
+(and perhaps compute nodes as well).
+Please see the specific notes in each function.
 """
 
 import os
@@ -24,6 +27,8 @@ import tempfile
 
 from wpylib.params.params_struct import Struct as struct
 import wpylib.shell_tools as sh
+
+from pyqmc.sites.pmn import getusername
 
 # Rather general-purpose tools for PMN:
 
@@ -44,7 +49,7 @@ def get_gafqmc_run_snapshot(rundirs):
   print "Snapshot data is located in subdir: ", destbasedir
   # This is the standard location for rundir on local scratch as
   # defined by run-gafqmc.sh:
-  rundir_rx = regex(r'/state/partition1/' + os.environ['USER'] + '/([0-9]+)\.([-_a-zA-Z0-9]+)\.run')
+  rundir_rx = regex(r'/state/partition1/' + getusername() + '/([0-9]+)\.([-_a-zA-Z0-9]+)\.run')
   if isinstance(rundirs, basestring):
     rundirs = [rundirs]
   for (i, r) in enumerate(rundirs):
@@ -75,7 +80,7 @@ def fetch_gafqmc_run_output(rundirs, force_update=False, save_walkers=False):
   from wpylib.regexps import regex
   #destbasedir = tempfile.mkdtemp(dir=os.getcwd())
   #print "Snapshot data is located in subdir: ", destbasedir
-  rundir_rx = regex(r'/state/partition1/' + os.environ['USER'] + '/([0-9]+)\.([-_a-zA-Z0-9]+)\.run')
+  rundir_rx = regex(r'/state/partition1/' + getusername() + '/([0-9]+)\.([-_a-zA-Z0-9]+)\.run')
   if isinstance(rundirs, basestring):
     rundirs = [rundirs]
   files_to_fetch = [
