@@ -94,18 +94,18 @@ def check_qmc(fname=None, archive=False, xflags=(), eqlb=(1,), reblk=(2,20,2),
   #sh.run("check_eqlb", (fname, "1"))
   if eqlb:
     prn("EQUILIBRATION/QMC RAW ENERGIES:")
-    eqlb_info = tuple([ str(vv) for vv in eqlb ])
+    eqlb_info = tuple(map(str, eqlb))
     x = tuple(xflags) + tuple(eqlb_flags)
-    if len(x) > 0:
-      prn("Extra flags: " + " ".join(x))
+    if True or len(x) > 0:
+      prn("Flags: " + " ".join(eqlb_info + x))
     prn(sh.pipe_out(("check_eqlb",) + fname + eqlb_info + x).replace('\x0c', ''))
   
   if reblk:
     prn("REBLOCKING:")
-    reblk_info = tuple([ str(vv) for vv in reblk ])
+    reblk_info = tuple(map(str, reblk))
     x = tuple(xflags) + tuple(reblk_flags)
-    if len(x) > 0:
-      prn("Extra flags: " + " ".join(x))
+    if True or len(x) > 0:
+      prn("Flags: " + " ".join(reblk_info + x))
     prn(sh.pipe_out(("check_reblocking",) + fname + reblk_info + ("plt", "txt") + x).replace('\x0c', ''))
   if archive: farch.close()
 
