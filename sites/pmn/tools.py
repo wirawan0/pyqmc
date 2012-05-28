@@ -130,3 +130,34 @@ def _file_search(Dir, Names):
       return fn
   return None
 
+
+def get_running_jobs(sort=True):
+  """Obtains the list of currently running jobs for the user."""
+  username = getusername()
+  # see squeue man page for status code (%t specifier)
+  listjob = sh.pipe_out(("squeue", "-u", username, "--noheader", "--format=%i %t"), split=True)
+  rslt = []
+  # was using `badstatus' this on my awk scriplet, but I changed to `runstatus'
+  # below for positive status checking.
+  badstatus = (
+    'PD', # pending
+    'CA', # cancelled
+    'CD', # completed
+  )
+  # treat one of these statuses as "running"
+  runstatus = (
+    'CF', # configuring
+    'R',  # running
+    'F',  # failure
+    'NF', # node failure
+    'TO', # timeout
+    'CG', # completing
+  )
+  for job1 in listjob:
+    R = job1.split()
+    if R[1] in runstatus:
+      rslt.append(R[0])
+  if sort:
+    rslt.sort()
+  return rslt
+
