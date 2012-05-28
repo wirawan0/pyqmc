@@ -161,3 +161,23 @@ def get_running_jobs(sort=True):
     rslt.sort()
   return rslt
 
+
+def get_pending_jobs(sort=True):
+  """Obtains the list of currently pending (queued) jobs for the user."""
+  username = getusername()
+  # see squeue man page for status code (%t specifier)
+  listjob = sh.pipe_out(("squeue", "-u", username, "--noheader", "--format=%i %t"), split=True)
+  rslt = []
+  # treat one of these statuses as "running"
+  qstatus = (
+    'PD', # pending
+    'S',  # suspended
+  )
+  for job1 in listjob:
+    R = job1.split()
+    if R[1] in qstatus:
+      rslt.append(R[0])
+  if sort:
+    rslt.sort()
+  return rslt
+
