@@ -61,3 +61,5 @@ class site_config(pyqmc.sites.site_config_base):
     self._defattr('SCR2_ROOT', pathcat('/scr2', self.USER))
     self._defattr('LUSTRE_ROOT', pathcat('/mnt/lustre', self.USER))
 
+def getusername():
+  return os.environ['USER']
