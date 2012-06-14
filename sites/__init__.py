@@ -20,6 +20,7 @@ import sys
 
 _sites_supported = [
 # Public sites
+  'jaguarpf',
   'pmn',
   'avocado',
 # Private sites
