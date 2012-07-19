@@ -51,7 +51,7 @@ def is_qmc_output_finished(filename):
 
 
 def check_qmc(fname=None, archive=False, xflags=(), eqlb=(1,), reblk=(2,20,2),
-              eqlb_flags=(), reblk_flags=()):
+              eqlb_flags=(), reblk_flags=(), quiet_stdout=0):
   """Checks the QMC results (INFO file) using my stand-alone QMC inspect tools.
   x is the extra flags to be passed on to check_* tools."""
 
@@ -72,9 +72,13 @@ def check_qmc(fname=None, archive=False, xflags=(), eqlb=(1,), reblk=(2,20,2),
   if archive:
     fnarch = ifelse(isinstance(archive, basestring), archive, "analysis.txt")
     farch = open(fnarch, "a")
-    def prn(x):
-      sys.stdout.write(str(x) + "\n")
-      farch.write(str(x) + "\n")
+    if quiet_stdout:
+      def prn(x):
+        farch.write(str(x) + "\n")
+    else:
+      def prn(x):
+        sys.stdout.write(str(x) + "\n")
+        farch.write(str(x) + "\n")
   else:
     def prn(x):
       sys.stdout.write(str(x) + "\n")
