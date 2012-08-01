@@ -13,3 +13,6 @@ pass
 
 class PyqmcDataError(Exception):
   """Data related error (whether in-memory or on-disk)."""
+
+class PyqmcParseError(Exception):
+  """Parser related error (e.g. for text files)."""
