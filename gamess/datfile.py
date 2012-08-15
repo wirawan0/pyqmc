@@ -30,11 +30,11 @@ class movecs(object):
   def read(self, infile, vec_select=1, verbose=0, nbasis=None, out=sys.stdout):
     """Reads off molecular orbital vectors.
     Usage:
-      my $movecs = ReadGamess(fname, opt1 => "value", ...)
+      movecs = pyqmc.gamess.datfile.movecs(fname, [options])
     Valid options:
-      vec_select => <integer>  (default: 1; 1-based)
-      verbose    => 0|1        (default: 0)
-      nbasis     => <integer>  (default: autodetected)
+      vec_select = <integer>  (default: 1; 1-based choice)
+      verbose    = 0|1        (default: 0)
+      nbasis     = <integer>  (default: autodetected)
    
     This routine was translated from Gamess::ReadGamessMOVecs routine
     in my Gamess.pm perl module.
