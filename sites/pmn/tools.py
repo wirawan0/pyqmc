@@ -181,3 +181,76 @@ def get_pending_jobs(sort=True):
     rslt.sort()
   return rslt
 
+
+# Utilities below relocate stuff from home directory to lustre or
+# a scratch directory.
+# This is for space-saving plus preserving original file paths.
+
+bigfiles_dest_root = {
+# Formula for destination root dir for large files (e.g. for
+# move_to_* functions below)
+  'lustre': lambda **params: "/mnt/lustre/%(USER_PMN)s/BIGFILES.runtime" % params,
+  1:        lambda **params: "/scr1/%(USER_PMN)s/BIGFILES" % params,
+  2:        lambda **params: "/scr2/%(USER_PMN)s/BIGFILES" % params,
+}
+
+def move_to_lustre(f):
+  """Moves a file (or set of files) from my home dir to lustre PFS on PMN.
+  """
+  from os.path import basename, dirname, abspath, realpath, join, exists, islink
+  from wpylib.sugar import is_iterable
+  if not is_iterable(f):
+    f = [f]
+  USER_PMN = getusername()
+  home_dir = join("/home", USER_PMN)
+  lustre_dir = bigfiles_dest_root['lustre'](USER_PMN=USER_PMN)
+  # join("/mnt/lustre", USER_PMN, "BIGFILES.runtime")
+  for F1 in f:
+    if islink(F1): continue
+    F1p = realpath(F1)
+    F1d = dirname(F1p)
+    F1f = basename(F1p)
+    if not F1d.startswith(home_dir):
+      raise ValueError, \
+        "move_to_lustre: path (" + F1p + ") must begin with user's home directory."
+    F1d_subpath = F1d[len(home_dir)+1:]
+    lustre_path = join(lustre_dir, F1d_subpath)
+    #print F1
+    #print F1p
+    #print lustre_path
+    sh.mkdir("-p", "-v", lustre_path)
+    sh.provide_link(join(F1d, ".scr"), lustre_path)
+    sh.mv("-v", "-i", F1p, join(F1d, ".scr", F1f))
+    sh.provide_link(join(F1d, F1f), join(".scr", F1f))
+
+
+def move_to_scr(f, scr=2):
+  """Moves a file (or set of files) from my home dir to /scr1 or /scr2 on PMN.
+  """
+  assert scr == 1 or scr == 2
+  from os.path import basename, dirname, abspath, realpath, join, exists, islink
+  from wpylib.sugar import is_iterable
+  if not is_iterable(f):
+    f = [f]
+  USER_PMN = getusername()
+  home_dir = join("/home", USER_PMN)
+  scr_dir = bigfiles_dest_root[scr](USER_PMN=USER_PMN)
+  # join("/scr%d" % scr, USER_PMN, "BIGFILES")
+  dotscr = ".scr%d" % scr
+  for F1 in f:
+    if islink(F1): continue
+    F1p = realpath(F1)
+    F1d = dirname(F1p)
+    F1f = basename(F1p)
+    if not F1d.startswith(home_dir):
+      raise ValueError, \
+        "move_to_scr: path (" + F1p + ") must begin with user's home directory."
+    F1d_subpath = F1d[len(home_dir)+1:]
+    scr_path = join(scr_dir, F1d_subpath)
+    #print F1
+    #print F1p
+    #print scr_path
+    sh.mkdir("-p", "-v", scr_path)
+    sh.provide_link(join(F1d, dotscr), scr_path)
+    sh.mv("-v", "-i", F1p, join(F1d, dotscr, F1f))
+    sh.provide_link(join(F1d, F1f), join(dotscr, F1f))
