@@ -51,7 +51,7 @@ def is_qmc_output_finished(filename):
 
 
 def check_qmc(fname=None, archive=False, xflags=(), eqlb=(1,), reblk=(2,20,2),
-              eqlb_flags=(), reblk_flags=(), quiet_stdout=0):
+              eqlb_flags=(), reblk_flags=(), quiet_stdout=0, force_raw=0):
   """Checks the QMC results (INFO file) using my stand-alone QMC inspect tools.
   x is the extra flags to be passed on to check_* tools."""
 
@@ -65,9 +65,16 @@ def check_qmc(fname=None, archive=False, xflags=(), eqlb=(1,), reblk=(2,20,2),
   else:
     fname = tuple(fname)
 
+  fname_format = {}
   for f in fname:
     if not is_qmc_output(f):
-      raise ValueError, "Not a QMC output file: " + f
+      if not force_raw:
+        raise ValueError, "Not a QMC output file: " + f
+      else:
+        print >> sys.stderr, "Warning: assuming raw output: " + f
+        fname_format[f] = "raw"
+    else:
+      fname_format[f] = "qmc"
 
   if archive:
     fnarch = ifelse(isinstance(archive, basestring), archive, "analysis.txt")
@@ -90,7 +97,7 @@ def check_qmc(fname=None, archive=False, xflags=(), eqlb=(1,), reblk=(2,20,2),
           [ os.path.abspath(f) for f in fname ]
       ))
   for f in fname:
-    if not is_qmc_output_finished(f):
+    if fname_format[f] == "qmc" and not is_qmc_output_finished(f):
       prn("Warning: calculation unfinished yet: %s" % f)
   prn("")
 
