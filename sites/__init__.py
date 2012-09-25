@@ -23,6 +23,7 @@ _sites_supported = [
   'jaguarpf',
   'pmn',
   'avocado',
+  'sciclone',
 # Private sites
   'wirawan0',
 ]
