@@ -192,6 +192,7 @@ bigfiles_dest_root = {
   'lustre': lambda **params: "/mnt/lustre/%(USER_PMN)s/BIGFILES.runtime" % params,
   1:        lambda **params: "/scr1/%(USER_PMN)s/BIGFILES" % params,
   2:        lambda **params: "/scr2/%(USER_PMN)s/BIGFILES" % params,
+  'trash':  lambda **params: "/scr1/%(USER_PMN)s/deleted" % params,
 }
 
 def move_to_lustre(f):
@@ -254,3 +255,40 @@ def move_to_scr(f, scr=2):
     sh.provide_link(join(F1d, dotscr), scr_path)
     sh.mv("-v", "-i", F1p, join(F1d, dotscr, F1f))
     sh.provide_link(join(F1d, F1f), join(dotscr, F1f))
+
+
+def move_to_trash(f):
+  """Trash a file (or set of files) from my home dir to a designated place
+  """
+  from os.path import basename, dirname, abspath, realpath, join, exists, islink, isdir
+  from wpylib.sugar import is_iterable
+  if not is_iterable(f):
+    f = [f]
+  USER_PMN = getusername()
+  home_dir = join("/home", USER_PMN)
+  trash_dir = bigfiles_dest_root['trash'](USER_PMN=USER_PMN)
+  trash_link = ".trash"
+  for F1 in f:
+    if islink(F1): continue
+    F1p = realpath(F1)
+    F1d = dirname(F1p)
+    F1f = basename(F1p)
+    if not F1d.startswith(home_dir):
+      raise ValueError, \
+        "move_to_trash: path (" + F1p + ") must begin with user's home directory."
+    F1d_subpath = F1d[len(home_dir)+1:]
+    trash_path = join(trash_dir, F1d_subpath)
+    #print F1
+    #print F1p
+    #print trash_path
+    if not isdir(trash_link):
+      if exists(trash_link):
+        raise RuntimeError, \
+          "Trash link `"+trash_link+"' exists but not a directory in "+F1d
+      else:
+        sh.mkdir("-p", "-v", trash_path)
+        sh.provide_link(join(F1d, trash_link), trash_path)
+    sh.mv("-v", "-i", F1p, join(F1d, trash_link, F1f))
+    # IMPORTANT: do NOT provide backlink to the trashed file, but only
+    # note the subdirectory location:
+    #sh.provide_link(join(F1d, F1f), join(".scr", F1f))
