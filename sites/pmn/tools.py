@@ -29,6 +29,7 @@ from wpylib.params.params_struct import Struct as struct
 import wpylib.shell_tools as sh
 
 from pyqmc.sites.pmn import getusername
+from pyqmc.utils import _file_search
 
 # Rather general-purpose tools for PMN:
 
@@ -121,14 +122,6 @@ def cnode_shell(host, args, **opts):
   upon execution on the remote node.
   """
   return subprocess.call(('ssh', host, args), **opts)
-
-
-def _file_search(Dir, Names):
-  for N in Names:
-    fn = os.path.join(Dir, N)
-    if os.path.isfile(fn):
-      return fn
-  return None
 
 
 def get_running_jobs(sort=True):

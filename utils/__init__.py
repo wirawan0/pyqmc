@@ -6,4 +6,19 @@
 # Wirawan Purwanto
 # Created: 20090329
 #
-pass
+
+import os
+import os.path
+
+
+def _file_search(Dir, Names):
+  """Look for one of the files listed in `Names` in subdirectory `Dir`.
+  The first one found will be returned.
+  This is useful in case the file of interested may be compressed or
+  have different names (from different generation of tools/programs used)."""
+  for N in Names:
+    fn = os.path.join(Dir, N)
+    if os.path.isfile(fn):
+      return fn
+  return None
+
