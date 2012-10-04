@@ -40,6 +40,11 @@ _site_hostname_sha1   = [
   '2f22b7c85e1f144eb0005e887236cc4451c20cb7',
 ]
 
+LSCR_ROOT = '/local/scr'
+SCR1_ROOT = '/sciclone/scr20'
+SCR2_ROOT = '/sciclone/scr02'
+# other scr partitions exist, see sciclone manual page
+BIGDATA_ROOT = '/sciclone/data10'
 
 def _detect_site():
   for s in _site_hostname_sha1:
@@ -59,11 +64,16 @@ class site_config(pyqmc.sites.site_config_base):
     - shared space
     """
     pathcat = os.path.join
-    self._defattr('LSCR_ROOT', pathcat('/local/scr', self.USER))
-    self._defattr('SCR1_ROOT', pathcat('/sciclone/scr20', self.USER))
-    self._defattr('SCR2_ROOT', pathcat('/sciclone/scr02', self.USER))
-    self._defattr('BIGDATA_ROOT', pathcat('/sciclone/data10', self.USER))
+    self._defattr('LSCR_ROOT', pathcat(LSCR_ROOT, self.USER))
+    self._defattr('SCR1_ROOT', pathcat(SCR1_ROOT, self.USER))
+    self._defattr('SCR2_ROOT', pathcat(SCR2_ROOT, self.USER))
+    self._defattr('BIGDATA_ROOT', pathcat(BIGDATA_ROOT, self.USER))
 
 def getusername():
   """Override this function if needed (e.g. not running on the site)."""
   return os.environ['USER']
+
+def gethomedir():
+  """Override this function if needed (e.g. not running on the site)
+  to return the user's home directory in sciclone."""
+  return os.environ['HOME']
