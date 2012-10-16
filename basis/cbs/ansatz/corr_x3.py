@@ -86,7 +86,10 @@ class corr_x3_fitting(object):
     if isinstance(y[0], errorbar):
       # special handling
       if len(y) == 2:
-        rslt = extrap_2pt(y[0], x[0], y[1], x[1])
+        if x[1] > x[0]:
+          rslt = extrap_2pt(y[0], x[0], y[1], x[1])
+        else:
+          rslt = extrap_2pt(y[1], x[1], y[0], x[0])
         # energy and slope already in rslt
         self.last_fit = fit_result(
           xopt=rslt,
@@ -109,6 +112,12 @@ class corr_x3_fitting(object):
     else:
       # the old way for scalars
       rslt = numpy.polyfit(x=invx3, y=y, deg=1, full=True)
+      # We have to reverse the order of values in xopt field
+      # since the highest power is coming first:
+      # For some reason we can't muck with rslt[0][:] without getting
+      # into problem: so we return the reversed array and add the
+      # original trailing fields in this way:
+      rslt = (rslt[0][::-1],) + (rslt[1:])
       keys = ('xopt', 'residuals', 'rank', 'singular_values', 'rcond')
       self.last_fit = fit_result(dict(zip(keys,rslt)))
 
@@ -154,15 +163,19 @@ def extrap_cbs_corr(E, X=None):
 
 def extrap_2pt(E1, x1, E2, x2):
   """Performs CBS two-point linear extrapolation in 1/x**3.
-  This tool should properly account the error bars."""
+  This tool should properly account the error bars in the
+  energies E1 and E2, if they exist.
+
+  x1 and x2 are the correlation consistent basis cardinal number.
+  For proper operation, x2 must be greater than x1."""
   dx = 1.0 / x1**3 - 1.0 / x2**3
   dE = E1 - E2
+  slope_CBS = dE / dx
 # # The simple formula is:
-# slope_CBS = dE / dx
-# E_CBS = E2 - slope_CBS / x2**3
-  #     = E2 - (E1-E2) / ( 1.0 / x1**3 - 1.0 / x2**3 ) / x2**3
-  #    := E2 - (E1-E2) * fac
-  #     = E2 * (1 + fac) - E1 * fac
+  # E_CBS = E2 - slope_CBS / x2**3
+  #       = E2 - (E1-E2) / ( 1.0 / x1**3 - 1.0 / x2**3 ) / x2**3
+  #      := E2 - (E1-E2) * fac
+  #       = E2 * (1 + fac) - E1 * fac
   # The alternate formula is: -- this should factor in the errorbar
   fac = 1.0 / dx / x2**3
   E_CBS = E2 * (1 + fac) - E1 * fac
@@ -325,3 +338,59 @@ def Test_2():
   print "Total energy @ CBS = ", cbs[0]
   return cbs
 
+
+def Test_3():
+  """
+  Similar to Test_2 but uses only 2 points for correlated calculation.
+
+  >>> corr_x3.Test_3()
+  E      =  [errorbar(-681.6162,0.00061,'-681.61620(61)'), errorbar(-681.83561,0.00074,'-681.83561(74)')]
+  E_HF   =  [-681.07087043628303, -681.07394234790195, -681.07473323517297]
+  X      =  [3, 4]
+  X_HF   =  [3, 4, 5]
+  e_corr = {3: errorbar(-0.545329563717,0.00061,'-0.54533(61)'), 4: errorbar(-0.761667652098,0.00074,'-0.76167(74)')}
+  cbs_hf = [ -6.81075007e+02   2.42420813e-01   1.35689988e+00]
+  cbs_corr = (errorbar(-0.919535986863,0.00135519197479,'-0.9195(14)'), errorbar(10.1035734249,0.0447883545336,'10.104(45)'))
+  Total energy @ CBS =  -681.9945(14)
+  (errorbar(-681.994543442,0.00135519197479,'-681.9945(14)'),
+   errorbar(10.1035734249,0.0447883545336,'10.104(45)'),
+   array([ -6.81075007e+02,   2.42420813e-01,   1.35689988e+00]),
+   (errorbar(-0.919535986863,0.00135519197479,'-0.9195(14)'),
+    errorbar(10.1035734249,0.0447883545336,'10.104(45)')))
+  """
+  from wpylib.math.stats.errorbar import errorbar
+
+  eb = errorbar.create_str
+  E_HF = [-681.070870436283, -681.073942347902, -681.074733235173]
+  E_QMC = [ eb("-681.61620(61)"), eb("-681.83561(74)") ]
+  cbs = extrap_cbs(E_QMC, E_HF, [3,4], [3,4,5], debug=20)
+  print "Total energy @ CBS = ", cbs[0]
+  return cbs
+
+
+def Test_4():
+  """
+  Similar to Test_3 but no errorbars.
+
+  >>> corr_x3.Test_4()
+  E      =  [-681.61620000000005, -681.83560999999997]
+  E_HF   =  [-681.07087043628303, -681.07394234790195, -681.07473323517297]
+  X      =  [3, 4]
+  X_HF   =  [3, 4, 5]
+  e_corr = {3: -0.54532956371701857, 4: -0.76166765209802634}
+  cbs_hf = [ -6.81075007e+02   2.42420813e-01   1.35689988e+00]
+  cbs_corr = [ -0.91953599  10.10357342]
+  Total energy @ CBS =  -681.994543442
+  (-681.9945434421121,
+   10.103573424929229,
+   array([ -6.81075007e+02,   2.42420813e-01,   1.35689988e+00]),
+   array([ -0.91953599,  10.10357342]))
+  """
+  from wpylib.math.stats.errorbar import errorbar
+
+  eb = errorbar.create_str
+  E_HF = [-681.070870436283, -681.073942347902, -681.074733235173]
+  E_QMC = [ -681.61620, -681.83561 ]
+  cbs = extrap_cbs(E_QMC, E_HF, [3,4], [3,4,5], debug=20)
+  print "Total energy @ CBS = ", cbs[0]
+  return cbs
