@@ -124,6 +124,12 @@ class pwqmc_info(result_base):
         rslt["itv_pc"] = int(flds[1])
       elif Ls.startswith("itv_pc_eq="):
         rslt["itv_pc_eq"] = int(flds[1])
+      elif Ls.startswith("nblk="):
+        rslt["nblk"] = int(flds[1])
+      elif Ls.startswith("neq="):
+        rslt["neq"] = int(flds[1])
+      elif Ls.startswith("ngrth="):
+        rslt["ngrth"] = int(flds[1])
       elif Ls.startswith("nblkstep="):
         rslt["nblkstep"] = int(flds[1])
       elif Ls.startswith("nwlk="):
