@@ -30,10 +30,7 @@ from pyqmc.sites import str_grep
 
 # Standard information variables
 site_code = 'jaguarpf'
-_site_hostname_sha1 = 'aa9c409cfbc3d66e77bdcf5d8f6693b923bec76f' # jaguarpf-ext1.ccs.ornl.gov
-_site_hostname_clues = [
-  'jaguarpf-ext1.ccs.ornl.gov',
-]
+_site_hostname_sha1 = 'aa9c409cfbc3d66e77bdcf5d8f6693b923bec76f'
 
 
 def _detect_site():
@@ -49,7 +46,7 @@ class site_config(pyqmc.sites.site_config_base):
     super(site_config, self).init()
     self.init_jaguarpf_dirs()
   def init_jaguarpf_dirs(self):
-    """Initializes the default PMN-specific dirs:
+    """Initializes the default JaguarPF-specific dirs:
     - scratch
     - lustre shared space
     """
