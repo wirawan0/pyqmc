@@ -20,6 +20,7 @@ import sys
 
 _sites_supported = [
 # Public sites
+  'bluewaters',
   'jaguarpf',
   'pmn',
   'avocado',
@@ -27,6 +28,17 @@ _sites_supported = [
 # Private sites
   'wirawan0',
 ]
+
+"""Some internal variables declared here:
+
+- _etc_hosts :: Text lines of /etc/hosts, with comments already stripped
+- _etc_hosts_rec :: Same as _etc_hosts, except they are whitespace-split
+  into fields
+- _etc_hosts_ipv4hosts_digest :: A list containing the SHA1 digest of ipv4
+  host names
+- _etc_hosts_ipv4hosts_digest2 :: Same as _etc_hosts_ipv4hosts_digest,
+  except it is in the form of dict (for ease of lookup).
+"""
 
 try:
   import hashlib
@@ -75,6 +87,7 @@ def _init_sites():
   global _etc_hosts
   global _etc_hosts_rec
   global _etc_hosts_ipv4hosts_digest
+  global _etc_hosts_ipv4hosts_digest2
   strip_comments = lambda S : S.split("#",1)[0].strip()
   _etc_hosts = []
   _etc_hosts_rec = []
@@ -92,8 +105,16 @@ def _init_sites():
           if len(h1.split('.')) == 4:
             _etc_hosts_ipv4hosts_digest += [ sha1digest(hostname) for hostname in s_fields[1:] ]
     F.close()
+    _etc_hosts_ipv4hosts_digest2 = dict([ (d,1) for d in _etc_hosts_ipv4hosts_digest ])
   except:
     pass
+
+def _hostgrep(hosts):
+  """Look for a bunch of host names (given as their SHA1 digest) and
+  return the number of names found in the /etc/hosts file."""
+  from pyqmc.sites import _etc_hosts_ipv4hosts_digest2
+
+  return sum([ int(H in _etc_hosts_ipv4hosts_digest2) for H in hosts ])
 
 
 def _autodetect_site(debug=1):
