@@ -80,6 +80,8 @@ class gafqmc_info(result_base):
         rslt["neq"] = int(flds[1])
       elif Ls.startswith("ngrth="):
         rslt["ngrth"] = int(flds[1])
+      elif Ls.startswith("No Growth phase:"):
+        rslt["ngrth"] = 0
       elif Ls.startswith("itv_em="):
         rslt["itv_em"] = int(flds[1])
       elif Ls.startswith("itv_pc="):
