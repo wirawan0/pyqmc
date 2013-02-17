@@ -101,6 +101,8 @@ class gafqmc_info(result_base):
       elif Ls.startswith("Using OpenMP with number of threads = "):
         rslt["num_threads"] = int(flds[7])
       elif Ls.startswith("Parallel version of GAFQMC, using NProc = "):
+        rslt["code_name"] = "gafqmc"
+        rslt["code_branch"] = "mpi"
         rslt["num_tasks"] = int(flds[7])
       elif Ls.startswith("Host:"):
         rslt["run_host"] = flds[1]

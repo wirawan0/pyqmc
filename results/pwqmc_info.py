@@ -158,6 +158,8 @@ class pwqmc_info(result_base):
       elif Ls.startswith("Program started on"):
         rslt["start_time"] = \
           time.strptime(flds[3] + " " + flds[5][:6], "%Y%m%d %H%M%S")
+      elif Ls.startswith("Planewave-AFQMC calculation for system: General electronic system"):
+        rslt["code_name"] = "pwqmc"
 
       # measurement and other complex data capture
       elif Ls.startswith("Measurement phase..."):
