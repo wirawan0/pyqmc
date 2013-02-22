@@ -52,7 +52,7 @@ class site_config(pyqmc.sites.site_config_base):
   site_code = site_code
   def init(self):
     super(site_config, self).init()
-    self.init_jaguarpf_dirs()
+    self.init_bluewaters_dirs()
   def init_bluewaters_dirs(self):
     """Initializes the default BlueWaters-specific dirs:
     - scratch
