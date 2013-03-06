@@ -130,6 +130,8 @@ class pwqmc_info(result_base):
         rslt["neq"] = int(flds[1])
       elif Ls.startswith("ngrth="):
         rslt["ngrth"] = int(flds[1])
+      elif Ls.startswith("trial E fixed at input value"):
+        rslt["ngrth"] = 0
       elif Ls.startswith("nblkstep="):
         rslt["nblkstep"] = int(flds[1])
       elif Ls.startswith("nwlk="):
