@@ -58,8 +58,11 @@ class gafqmc_info(result_base):
       flds = Ls.split()
       if len(flds) == 0:
         continue
-      elif flds[0] == "Variational" and flds[1] == "energy":
-        rslt["Evar"] = float(flds[3])
+      elif flds[0] == "Variational":
+        if flds[1] == "energy":
+          rslt["Evar"] = float(flds[3])
+        elif flds[1] == "energy=":
+          rslt["Evar"] = float(flds[2])
       elif flds[0] == "nbasis":
         rslt["nbasis"] = int(flds[2])
       elif flds[0] == "Energy_N_QMC":
