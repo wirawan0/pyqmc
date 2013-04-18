@@ -349,7 +349,7 @@ class abinit_output(result_base):
       F = L.split()
       if len(F) == 0:
         break
-      if F[1] == ':':
+      if len(F) > 1 and F[1] == ':':
         # some comments show up like this:
         #   outvar1 : prtvol=0, do not print more k-points.
         #   prtocc : prtvol=0, do not print more k-points.
