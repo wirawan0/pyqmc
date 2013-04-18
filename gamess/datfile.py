@@ -265,7 +265,7 @@ class movecs(object):
       for (i,v) in enumerate(vecs.T):
         for j1 in xrange(0, self.nbasis, 5):
           j2 = min(j1+5, self.nbasis)
-          rslt.append(("%2d%3d" % (i + 1, j1//5 + 1)) \
+          rslt.append(("%2d%3d" % ((i + 1) % 100, j1//5 + 1)) \
                       + "".join([ "%15.8E" % v[j] for j in xrange(j1,j2)]) \
                       + "\n")
     rslt.append(" $END\n")

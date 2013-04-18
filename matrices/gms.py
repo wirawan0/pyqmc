@@ -436,6 +436,8 @@ class Fort70(object): #{
     "S_eigen_vec" : "U",
     "H1" : "H1",
     "psiT_ampl" : "ampl",
+    "MO_noise1_up": "noise_up",
+    "MO_noise1_dn": "noise_dn",
   }
   matrix_complex = [
     "psiT_ampl",
