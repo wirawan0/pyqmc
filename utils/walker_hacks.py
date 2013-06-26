@@ -42,9 +42,11 @@ class emergency_walkers_fixup(object):
   in the case of broken files.
   """
 
-  # fixup_dir is a relative subdirectory to contain fixed up walker file set
-  fixup_dir = "fixup"
-  fixup_note_bad_dir = "fixup/bad"
+  # walkers_fixup_dir is a relative subdirectory to contain fixed up walker file set
+  # walkers_fixup_note_bad_dir is a relative subdirectory to contain ONLY the replaced
+  # bad walker filenames (for human inspection)
+  walkers_fixup_dir = "fixup"
+  walkers_fixup_note_bad_dir = "fixup/bad"
 
   verbose = 1
   log = text_output(sys.stdout, flush=True)
@@ -121,12 +123,12 @@ class emergency_walkers_fixup(object):
 
     orig_pwd = os.getcwd()
     os.chdir(self.walkers_absdir)
-    sh.mkdir("-p", self.fixup_dir)
-    sh.mkdir("-p", self.fixup_note_bad_dir)
+    sh.mkdir("-p", self.walkers_fixup_dir)
+    sh.mkdir("-p", self.walkers_fixup_note_bad_dir)
 
     # Copy over the good walkers
     for w in self.walkers_good:
-      self.copy_file(w, joinpath(self.fixup_dir,w))
+      self.copy_file(w, joinpath(self.walkers_fixup_dir,w))
 
     num_good = len(self.walkers_good)
     max_tries = 100
@@ -142,10 +144,10 @@ class emergency_walkers_fixup(object):
         elif tries == max_tries:
           raise RuntimeError, \
             "Fatal: cannot find good replacement for walker file %s" % wb
-      if verbose >= 10:
-        self.log("fixup: %s -> %s\n", wb, wg)
-      self.copy_file(wg, joinpath(self.fixup_dir, wb))
-      self.copy_file(wg, joinpath(self.fixup_note_bad_dir, wb))
+      if self.verbose >= 10:
+        self.log("fixup: %s -> %s\n" % (wb, wg))
+      self.copy_file(wg, joinpath(self.walkers_fixup_dir, wb))
+      self.copy_file(wg, joinpath(self.walkers_fixup_note_bad_dir, wb))
 
     os.chdir(orig_pwd)
 
