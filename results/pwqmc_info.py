@@ -215,7 +215,7 @@ class pwqmc_info(result_base):
         raise PyqmcParseError, \
           "Invalid format in PWQMC measurement text (INFO)"
       try:
-        rec = tuple(map(float, flds[:4]))
+        rec = tuple(map(lambda x: float(x.rstrip(",")), flds[:4]))
       except:
         raise PyqmcParseError, \
           "Error parsing PWQMC measurement text (INFO)"
