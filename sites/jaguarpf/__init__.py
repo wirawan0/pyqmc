@@ -12,7 +12,7 @@ Site-specific support for pyqmc library.
 This module is part of PyQMC project.
 
 This module provides support and specific tools for OLCF jaguarpf
-supercomputer.
+supercomputer and its predecessors (titan, ...).
 
 """
 
@@ -30,11 +30,14 @@ from pyqmc.sites import str_grep
 
 # Standard information variables
 site_code = 'jaguarpf'
-_site_hostname_sha1 = 'aa9c409cfbc3d66e77bdcf5d8f6693b923bec76f'
+_site_hostnames_sha1 = [
+  'aa9c409cfbc3d66e77bdcf5d8f6693b923bec76f',
+  '532280b8b4297b4869c7d82f46f9c310f536a433',
+]
 
 
 def _detect_site():
-  if str_grep(_site_hostname_sha1, pyqmc.sites._etc_hosts_ipv4hosts_digest):
+  if pyqmc.sites._hostgrep(_site_hostnames_sha1):
     return True
   else:
     return False
