@@ -186,7 +186,7 @@ class gafqmc_info(result_base):
         raise PyqmcParseError, \
           "Invalid format in GAFQMC measurement text (INFO)"
       try:
-        rec = tuple(map(float, flds[:4]))
+        rec = tuple(map((lambda x: float(x.rstrip(','))), flds[:4]))
       except:
         raise PyqmcParseError, \
           "Error parsing GAFQMC measurement text (INFO)"
