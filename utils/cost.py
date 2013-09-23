@@ -79,9 +79,9 @@ class qmc_cost_estimator(cost_base):
   @property
   def get_hsop_dim(self):
     if getattr(self, "general_H2", False):
-      return self.nbasis * (self.nbasis + 1) // 2
-    else:
       return self.nbasis**2
+    else:
+      return self.nbasis * (self.nbasis + 1) // 2
 
   def compute_time_cost(self, Print=False):
     """
@@ -126,36 +126,6 @@ class qmc_cost_estimator(cost_base):
     self.Tmeas = self.tmeas * self.num_tasks * self.num_threads
 
     if Print: self.printout_timing()
-
-  def compute_mem_cost(self, Print=False):
-    """
-    Get total computing memory cost.
-
-    Required input:
-    - nbasis
-    - nflds
-    - nwlkmax
-    - nptot, nup, ndn
-    - npsitdet
-    """
-    raise NotImplementedError, "Under construction"
-    nwlkmax_proc = self.get_nwlkmax_proc
-    (M, Nptot, F, D) = (self.nbasis, self.nptot, self.nflds, self.npsitdet)
-    (DPC, DP) = (self.size_complex, self.size_real)
-    """ UNDER CONSTRUCTION
-    self.wlk_size = Nptot * M * DPC
-    self.mem_wlk = self.wlk_size * nwlkmax_proc
-    self.mem_Lvec = self.get_hsop_dim * F * DP   # so far it is double precision
-    self.mem_
-    """
-
-
-    if Print: raise NotImplementedError
-
-  def printout_mem(self, out=None):
-    """
-    Prints out a report for memory estimate.
-    """
 
 
   def printout_timing(self, out=None):
@@ -205,7 +175,6 @@ class qmc_cost_estimator(cost_base):
     O("Tmeas1       = %10.6f M core*h\n" % (self.Tmeas1 / Mh))
     O("Tmeas        = %10.6f M core*h\n" % (self.Tmeas / Mh))
     O("Ttotal       = %10.6f M core*h\n" % ((self.Teq + self.Tgrth + self.Tmeas) / Mh))
-
 
 
 class real_qmc_cost(object):
