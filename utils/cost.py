@@ -46,6 +46,7 @@ class qmc_cost_estimator(cost_base):
   """QMC cost calculator, given the number of blocks etc."""
   size_complex = 16
   size_real = 8
+  size_int = 4  # unless -i8 is used
 
   @property
   def numprocs(self): # old keyword
