@@ -84,6 +84,38 @@ class qmc_cost_estimator(cost_base):
     else:
       return self.nbasis * (self.nbasis + 1) // 2
 
+  def params_wlkr(self, fmt=0):
+    """Return key parameters of a walker, useful for estimating the
+    per-walker cost.
+
+    Output format 0 gives (M, Nptot, Nu, Nd, F, D).
+    """
+    (M, Nptot, F, D) = (self.nbasis, self.nptot, self.nflds, self.npsitdet)
+    try:
+      Nu = self.nup
+      Nd = self.ndn
+    except:
+      print >> sys.stderr, "WARNING: cannot find nup/ndn, making a ballpark estimate"
+      Nu = (self.nptot + 1) // 2
+      Nd = self.nptot - Nu
+      print >> sys.stderr, "WARNING: estimated nup, ndn =", nup, ndn
+
+    if fmt == 0:
+      return (M, Nptot, Nu, Nd, F, D)
+    else:
+      raise ValueError, "Unknown parameter format: %s" % fmt
+
+  def params_sys(self, fmt=0):
+    """Returns system-dependent parameters.
+
+    Output format 0 gives a tuple with memory size of double complex,
+    double real, and integer variables, respectively.
+    """
+    if fmt == 0:
+      return (self.size_complex, self.size_real, self.size_int)
+    else:
+      raise ValueError, "Unknown parameter format: %s" % fmt
+
   def compute_time_cost(self, Print=False):
     """
     Get total computing time cost.
