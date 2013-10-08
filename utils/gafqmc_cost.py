@@ -14,10 +14,13 @@ Cost estimator and analyzer for GAFQMC code.
 
 """
 
+import numpy
+
 from pyqmc.utils import cost
+from pyqmc.utils import linalg_cost
 
 
-class gafqmc_cost_estimator(cost.qmc_cost_estimator):
+class gafqmc_sparse1_cost_estimator(cost.qmc_cost_estimator):
   """Cost estimator specifically for GAFQMC calculation.
 
   Names of precomputed objects:
@@ -37,10 +40,18 @@ class gafqmc_cost_estimator(cost.qmc_cost_estimator):
   dens_Vxs = 0.5
   dens_Ls = 0.7
 
+  tpref_gf1_ovlp = 9.74193418e-09
+  tpref_gf1_ovlpinv = 2.25385979e-09
+  tpref_FB = 1.83499926e-08
+  tpref_Elocal = 1.09604036e-08
+
+
   # Turns out, empirically Vss and Vxs densities are the same
 
+  def __init__(self):
+    self.linalg = linalg_cost.linalg_cost_ops()
 
-  def compute_mem_cost_sparse1(self, Print=False):
+  def compute_mem_cost(self, Print=False):
     """
     Estimate a calculation's MEMORY cost based on the given input sizes.
     For original sparse method due to Wissam.
@@ -60,16 +71,8 @@ class gafqmc_cost_estimator(cost.qmc_cost_estimator):
     - mem_rhos =
     """
     nwlkmax_proc = self.get_nwlkmax_proc
-    (M, Nptot, F, D) = (self.nbasis, self.nptot, self.nflds, self.npsitdet)
-    try:
-      Nu = self.nup
-      Nd = self.ndn
-    except:
-      print >> sys.stderr, "WARNING: cannot find nup/ndn, making a ballpark estimate"
-      Nu = (self.nptot + 1) // 2
-      Nd = self.nptot - Nu
-      print >> sys.stderr, "WARNING: estimated nup, ndn =", nup, ndn
-    (dpc, dp, it) = (self.size_complex, self.size_real, self.size_int)
+    (M, Nptot, Nu, Nd, F, D) = self.params_wlkr(0)
+    (dpc, dp, it) = self.params_sys(0)
 
     self.wlk_size = Nptot * M * dpc
     self.mem_wlk = self.wlk_size * nwlkmax_proc
@@ -102,3 +105,42 @@ class gafqmc_cost_estimator(cost.qmc_cost_estimator):
     Prints out a report for memory estimate.
     """
 
+  # Tentative way to compute naive multithreading task sharing
+  def task_div(self, D, th):
+    """`Task divide-and-share':
+    The division of D iterations into th threads ---
+    to approximately account for imperfect task balance in OpenMP way.
+    """
+    inv_th = 1.0 / th
+    return numpy.ceil(D * inv_th)
+
+  def compute_step_cost(self, Print=False):
+    # Placeholder: will be replaced by fancier stuff later
+    # for more "symbolic" feel, or function that can give more actual
+    # estimate of the operation cost.
+    # For now these are merely
+    LA = self.linalg
+    mxm, mxv, vdot, mmtrace, tmmtrace = LA.mxm, LA.mxv, LA.vdot, LA.mmtrace, LA.tmmtrace
+    (M, Nptot, Nu, Nd, F, D) = self.params_wlkr(0)
+    try:
+      th = self.num_threads
+    except:
+      th = 1
+
+    d_fac = self.task_div(D, th)
+
+    #self.cost_pre_Q = d_fac * F * mxm(M,N,N)
+    #self.cost_Theta = d_fac * mxm(M,N,N)  # -- not considered for now
+
+    self.ops_gf1_ovlp = d_fac * (mxm(Nu,Nu,M) + mxm(Nd,Nd,M)) # matmul of Psi^hc * Phi
+    self.ops_gf1_ovlpinv = d_fac * (mxm(Nu,Nu,Nu) + mxm(Nd,Nd,Nd)) # the inverse of ovlp matrix
+    self.ops_FB = d_fac * self.dens_Ls * F * (mmtrace(M,Nu) + mmtrace(M,Nd)) # the trace part
+    self.ops_Elocal = d_fac * self.dens_Vss * (2*tmmtrace(M,M,Nu,Nu) + 2*tmmtrace(M,M,Nd,Nd) + tmmtrace(M,M,Nu,Nd)) # the trace part
+
+    self.cost_gf1_ovlp = self.tpref_gf1_ovlp * self.ops_gf1_ovlp
+    self.cost_gf1_ovlpinv = self.tpref_gf1_ovlpinv * self.ops_gf1_ovlpinv
+    self.cost_FB = self.tpref_FB * self.ops_FB
+    self.cost_Elocal = self.tpref_FB * self.ops_Elocal
+
+    if Print:
+      self.printout_compute()
