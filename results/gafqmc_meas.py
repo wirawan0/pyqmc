@@ -31,7 +31,8 @@ class meas_hdf5(pwmeas.meas_hdf5):
     "Creator": "pyqmc.results.gafqmc_meas",
     "FormatType": "gafqmc_meas",
     "FormatVersion": 0,
-    "Devel_CVS_ID": "$Id: gafqmc_meas.py,v 1.1 2010-07-29 16:04:19 wirawan Exp $",
+    # This is no longer relevant:
+    #"Devel_CVS_ID": "$Id: gafqmc_meas.py,v 1.1 2010-07-29 16:04:19 wirawan Exp $",
   }
 
 
