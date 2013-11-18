@@ -1072,6 +1072,7 @@ class meas_text(object):
         break
 
       if keep_phasefac:
+        raise RuntimeError, "EXECUTING THIS TRIGGER A BUG IN THE CODE -- see file ERROR!"
         w = complex(flds[1], flds[4])
       else:
         w = float(flds[1])
@@ -1368,7 +1369,7 @@ def convert_meas_to_hdf5_v2(output, H0=0, files=None, **opts):
   . meas_hdf5_class
     Used to define custom classes for creating measurement reader
     (meas_text_class) and archiver (meas_hdf5_class).
-    Know what you are doing if you specify this.
+    !!! KNOW WHAT YOU ARE DOING IF YOU SPECIFY THIS !!!
     They must be API-compatible to the meas_text and meas_hdf5 defined
     in this module.
   """
