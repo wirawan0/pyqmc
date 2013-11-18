@@ -9,26 +9,75 @@
 # Created: 20100513
 #
 
+import math
 import os
 import time
 
 import h5py # HDF5 Python API
 import numpy
 
+from copy import copy
+
 import pyqmc.results.pwqmc_info as pwinfo
 import pyqmc.results.pwqmc_meas as pwmeas
+import pyqmc.results.gafqmc_info as ginfo
+import pyqmc.results.gafqmc_meas as gmeas
 
 from pyqmc.results.pwqmc_info import \
   kptstr, pwqmc_info
 
 from wpylib.timer import timer
-from wpylib.sugar import Parameters
+from wpylib.text_tools import str_trunc_begin
+from wpylib.params.params_flat import Parameters
+import wpylib.shell_tools as sh
+
+
+def store_pwqmc_info_metadata(info, hdf5_job_rec):
+  """Stores additional, basis/method-specific metadata on
+  the HDF5 job record.
+
+  This is for PWQMC runs."""
+  job0 = hdf5_job_rec
+
+  kpt_str = kptstr(info['kpt'])
+  job0.attrs['kpt'] = info['kpt']
+  job0.attrs['kptstr'] = "k" + kpt_str # compatibility with old format
+  job0.attrs['wsvol'] = info['vol']
+
+
+def store_gafqmc_info_metadata(info, hdf5_job_rec):
+  """Stores additional, basis/method-specific metadata on
+  the HDF5 job record.
+
+  This is for GAFQMC runs."""
+  pass
 
 
 class convert_ene2hdf5(object):
   """Main converter from *.ene files to a HDF5-formatted measurement file.
   Most likely you will need to derive this class to make a converter suitable
   to your own need."""
+
+  # Change these if needed:
+  meas_module = pwmeas
+  info_module = pwinfo
+  info_class = pwinfo.pwqmc_info
+
+  Default_desc = {
+    # System = descriptive text of the physical system
+    # unit = units of the energy measurement
+    pwinfo.pwqmc_info: dict(
+      System="PWQMC calculation",
+      unit="Ry",
+      extra_meta_copy=store_pwqmc_info_metadata,
+    ),
+    ginfo.gafqmc_info: dict(
+      System="GAFQMC calculation",
+      unit="Ha",
+      extra_meta_copy=store_gafqmc_info_metadata,
+    ),
+  }
+
   def __init__(self, **opts):
     self.opts = Parameters()
     self.opts.TMPDIR = sh.getenv("PYQMC_TMPDIR", "TMPDIR", "TMP", default="/tmp") \
@@ -68,19 +117,34 @@ class convert_ene2hdf5(object):
     """
     # FIXME: use self-introspection to reduce kitchen-sink params here:
     #p = Parameters(locals(), _opts_, _opts_.get('opts'), self.opts, _defaults)
-    p = opts._create_(_defaults)
-    info_file = p.info
-    src = p.src
+    p = self.opts._create_(_defaults)
+    if info == None:
+      info_file = p.info
+    else:
+      info_file = info
+    if src == None: src = p.src
+    if output == None: output = p.output
     orig_dir = os.getcwd()
 
     tm1 = time.clock()
     if not isinstance(info_file, pwqmc_info):
-      info = pwqmc_info(info_file)
+      info = self.info_class(info_file)
     else:
       info = info_file
       info_file = info['info_file']
 
-    kpt_str = kptstr(info['kpt'])
+    # Deduce the datatype of the info structure:
+    info_dtype = None
+    for klass in self.Default_desc.keys():
+      if isinstance(info, klass):
+        info_dtype = klass
+        break
+    if info_dtype == None:
+      raise RuntimeError, \
+        "Cannot deduce the datatype of the info structure: %s" % type(info)
+
+    Default_desc = self.Default_desc[info_dtype]
+
     # do these fetches here just in case they fail due to my mistake/negligence
     #kpt_data1 = ALL_KPTS_DATA[cellstr][volstr][kpt_str]
     #E_GGA = ALL_KPTS_DATA[cellstr][volstr]['kgrid']['E_GGA']
@@ -112,25 +176,28 @@ class convert_ene2hdf5(object):
     else:
       raise ValueError, "Don't know how to handle src %s = %s" % (str(type(src)), str(src))
 
-    hints = hints.copy()
-    hints.update({
+    try:
+      db_hints = copy(p.db_hints)
+    except:
+      db_hints = {}
+
+    db_hints.update({
       'nwlkavg': info['nwlk'],
       'nwlkmax': info['nwlkmax'],
       #'default_raw_chunks': [1, info['nwlkmax']],
       #'value_processor': valpx,
     })
 
-    if p.E_prefactor != 1.0 and 'value_processor' not in hints:
+    if p.E_prefactor != 1.0 and 'value_processor' not in db_hints:
       def valpx(data, meta, *junk1, **junk2):
-        """Renormalize the energy values (real and imaginary!) to 4-atom
-        cell value."""
-        data['E_l'] *= E_prefactor
-      hints['value_processor'] = valpx
+        """Rescales the energy values (real and imaginary!)."""
+        data['E_l'] *= p.E_prefactor
+      db_hints['value_processor'] = valpx
 
     if 'convert_preamble_steps_' in dir(self):
       # This is useful for e.g. adding default_raw_chunks, defining
       # value_processor, etc.
-      self.convert_preamble_steps_(hints=hints, info=info, opts=p)
+      self.convert_preamble_steps_(hints=db_hints, info=info, opts=p)
       # Examples:
       # in MnO 2x2x2:
       #    natoms = cell_info[cellstr]['natoms']
@@ -143,15 +210,15 @@ class convert_ene2hdf5(object):
       # We use chunksize = [1,nwlkmax] because we know the popsizes are
       # hovering near nwlkmax anyway.
 
-    db = pwmeas.convert_meas_to_hdf5_v2(output,
+    db = self.meas_module.convert_meas_to_hdf5_v2(output,
            files=files,
            betablk=info["betablk"], deltau=info["deltau"],
            H0=info["H0"],
-           debug=debug,
-           **hints
+           debug=p.debug,
+           **db_hints
          )
     db.flush()
-    if debug > 0:
+    if p.debug > 0:
       self.last_db = db
 
     # The last opened raw group is given as db.raw
@@ -159,37 +226,39 @@ class convert_ene2hdf5(object):
     # conversion just done.
     job0 = db.raw.job()
     # Add some useful attributes:
-    job0.attrs['System'] = info['System']
-    job0.attrs['H0'] = info['H0']
-    job0.attrs['deltau'] = info['deltau']
-    job0.attrs['Evar'] = info['Evar'] * E_prefactor
-    ET = (info['Etrial_noconst'] + info['H0']) * E_prefactor
-    ET_delta = 2 / math.sqrt(info['deltau']) * E_prefactor
-    job0.attrs['Etrial'] = ET # for El_bounds
-    job0.attrs['Ebounds'] = (ET - ET_delta, ET + ET_delta)
-    job0.attrs['units'] = 'Ry'  # temporarily storing in Rydberg unit
-    job0.attrs['kpt'] = info['kpt']
-    job0.attrs['kptstr'] = "k" + kpt_str # compatibility with old format
-    job0.attrs['wsvol'] = info['vol']
-    #vol_code = "%.2f" % (info['vol'] * bohr__angstrom**3 / 2)
-    #job0.attrs['GeomCode'] = "vol" + vol_code
-
-    # Additional metadata can be specified afterward
     if 'System' in p:
       System = p.System
     elif 'System' in info:
       System = info['System']
+    elif 'System' in Default_desc:
+      System = Default_desc['System']
+    else:
+      System = '(Unknown calculation)'
+    job0.attrs['System'] = System
+    job0.attrs['H0'] = info['H0']
+    job0.attrs['deltau'] = info['deltau']
+    job0.attrs['Evar'] = info['Evar'] * p.E_prefactor
+    ET = (info['Etrial_noconst'] + info['H0']) * p.E_prefactor
+    ET_delta = 2 / math.sqrt(info['deltau']) * p.E_prefactor
+    job0.attrs['Etrial'] = ET * p.E_prefactor # for El_bounds
+    job0.attrs['Ebounds'] = ((ET - ET_delta) * p.E_prefactor, (ET + ET_delta) * p.E_prefactor)
+    job0.attrs['units'] = Default_desc['unit']
+    extra_meta_copy = Default_desc.get('extra_meta_copy', None)
+    if extra_meta_copy != None:
+      extra_meta_copy(info, job0)
 
     if 'convert_postamble_steps_' in dir(self):
       # This is useful for e.g. adding more metadata
       self.convert_postamble_steps_(raw_group=job0, info=info, opts=p)
 
     tm2 = time.clock()
-    print "%s : kpt_str = %s, ET = %g, E_GGA_kpt = %g, E_GGA = %g; total time = %d" % \
-      (output, job0.attrs['kptstr'],
-       job0.attrs['Etrial'], job0.attrs['E_GGA_kpt'], job0.attrs['E_GGA'],
-       tm2 - tm1
+    print "%s : ET = %g; total time = %d; %s" % \
+      (output,
+       job0.attrs['Etrial'],
+       tm2 - tm1,
+       str_trunc_begin(System, 64),
       )
+
     db.flush()
     return db
 
