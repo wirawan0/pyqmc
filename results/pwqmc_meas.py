@@ -780,7 +780,7 @@ class meas_hdf5(object):
     This is a more efficient way of storing the pwaf-*. raw data.'''
     self.close()
     self.dbh5 = h5py.File(fname, mode)
-    if "FormatType" not in self.dbh5.attrs.listnames():
+    if "FormatType" not in self.dbh5.attrs:
       self.create_new(create_raw)
     try:
       self.raw_open(self.default_raw_group)
