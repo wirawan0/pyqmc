@@ -1,8 +1,8 @@
 #!/usr/bin/python
 # $Id: pwqmc_meas_convert.py,v 1.1 2010-09-30 01:46:43 wirawan Exp $
 #
-# pwqmc_meas_convert.py
-# Tools to convert PWQMC-77 measurement dump (pwaf-*.ene) files
+# pyqmc.results.meas_convert.py
+# Tools to convert PWQMC-77/GAFQMC measurement dump (pwaf-*.ene) files
 # to the standard HDF5 format.
 #
 # Wirawan Purwanto
@@ -53,6 +53,14 @@ def store_gafqmc_info_metadata(info, hdf5_job_rec):
   pass
 
 
+def dict_nested_copy_two_levels(d):
+  """Do dict nested copy for two outermost levels;
+  beyond that no copy is made."""
+  c = {}
+  for k in d:
+    c[k] = d[k].copy()
+  return c
+
 class convert_ene2hdf5(object):
   """Main converter from *.ene files to a HDF5-formatted measurement file.
   Most likely you will need to derive this class to make a converter suitable
@@ -64,18 +72,47 @@ class convert_ene2hdf5(object):
   info_class = pwinfo.pwqmc_info
 
   Default_desc = {
+    # Metadata descriptor stored in the HDF5 file.
     # System = descriptive text of the physical system
     # unit = units of the energy measurement
+    # Note: This object will be nested-copied by two levels upon the
+    # instantiation of the object.
     pwinfo.pwqmc_info: dict(
       System="PWQMC calculation",
       unit="Ry",
       extra_meta_copy=store_pwqmc_info_metadata,
-    ),
+    ), # pwqmc_info
     ginfo.gafqmc_info: dict(
       System="GAFQMC calculation",
       unit="Ha",
       extra_meta_copy=store_gafqmc_info_metadata,
-    ),
+    ), # gafqmc_info
+  }
+
+  Default_params = {
+    # User-overridable parameters for function calls below.
+    # Note: This object will be nested-copied by two levels upon the
+    # instantiation of the object.
+    pwinfo.pwqmc_info: dict(
+      convert_defaults=dict(
+        src="PWAF-meas.tar.lzma",
+        info="INFO",
+        output="measurements.h5",
+        hints={},
+        E_prefactor=1.0,
+        debug=1
+      ),
+    ), # pwqmc_info
+    ginfo.gafqmc_info: dict(
+      convert_defaults=dict(
+        src="GAFQMCF-meas.tar.lzma",
+        info="INFO",
+        output="measurements.h5",
+        hints=dict(keep_phasefac=1),
+        E_prefactor=1.0,
+        debug=1
+      ),
+    ), # gafqmc_info
   }
 
   def __init__(self, **opts):
@@ -83,6 +120,8 @@ class convert_ene2hdf5(object):
     self.opts.TMPDIR = sh.getenv("PYQMC_TMPDIR", "TMPDIR", "TMP", default="/tmp") \
         + ("/pwqmc_convert.%d" % (os.getpid()))
     self.opts.cleanup_tmpdir = True
+    self.Default_params = dict_nested_copy_two_levels(self.Default_params)
+    self.Default_desc = dict_nested_copy_two_levels(self.Default_desc)
 
   """
   def get_opt_proc(self, opts):
@@ -95,10 +134,6 @@ class convert_ene2hdf5(object):
   """
 
   def convert(self, src=None, info=None, output=None,
-              _defaults=dict(src="PWAF-meas.tar.lzma", info="INFO",
-                             output="measurements.h5", hints={},
-                             E_prefactor=1.0,
-                             debug=1),
               **_opts_):
     #def convert(src="PWAF-meas.tar.lzma", info="INFO",
     #            output="measurements.h5",
@@ -108,8 +143,10 @@ class convert_ene2hdf5(object):
     HDF5 database.
     Also adds some useful metadata from the INFO file.
     Required parameters to be properly set:
-    * src = the tarball, or the glob of the measurement files (*.ene).
+    * src = the filename of the tarball, or the glob of
+      the measurement files (*.ene).
     * info = the INFO file.
+    * output = the target HDF5 data file.
 
     Additional methods, if defined in the derived object, will be called:
     * convert_preamble_steps_(hint, info, opts)
@@ -117,7 +154,9 @@ class convert_ene2hdf5(object):
     """
     # FIXME: use self-introspection to reduce kitchen-sink params here:
     #p = Parameters(locals(), _opts_, _opts_.get('opts'), self.opts, _defaults)
-    p = self.opts._create_(_defaults)
+    # The function defaults are now provided in the
+    # Default_params...['convert_defaults'] field.
+    p = self.opts._create_(self.Default_params[self.info_class]['convert_defaults'])
     if info == None:
       info_file = p.info
     else:
@@ -144,6 +183,11 @@ class convert_ene2hdf5(object):
         "Cannot deduce the datatype of the info structure: %s" % type(info)
 
     Default_desc = self.Default_desc[info_dtype]
+    if not issubclass(info_dtype, self.info_class):
+      from warnings import warn
+      warn("INFO class (%s) does not match the converter's info_class!" \
+           % (info_dtype, self.info_class),
+           UserWarning)
 
     # do these fetches here just in case they fail due to my mistake/negligence
     #kpt_data1 = ALL_KPTS_DATA[cellstr][volstr][kpt_str]
@@ -261,4 +305,23 @@ class convert_ene2hdf5(object):
 
     db.flush()
     return db
+
+
+class gafqmc_convert_ene2hdf5(convert_ene2hdf5):
+  """An energy measurement data format converter for PWQMC calculations.
+  """
+  def __init__(self, **opts):
+    """Creates a energy measurement data format converter.
+    For GAFQMC calculations.
+    """
+    self.meas_module = gmeas
+    self.info_module = ginfo
+    self.info_class = ginfo.gafqmc_info
+    super(gafqmc_convert_ene2hdf5, self).__init__(**opts)
+
+
+class pwqmc_convert_ene2hdf5(convert_ene2hdf5):
+  """An energy measurement data format converter for PWQMC calculations.
+  """
+  pass
 
