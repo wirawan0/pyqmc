@@ -21,6 +21,7 @@ import numpy
 from wpylib.iofmt.text_input import text_input
 from wpylib.db.result_base import result_base
 from wpylib.sugar import ifelse
+from wpylib.regexps import regex
 
 class gafqmc_info(result_base):
   '''Structure to represent the metadata contained in INFO file
@@ -41,6 +42,15 @@ class gafqmc_info(result_base):
   '''
   meas_dtype = numpy.dtype([('beta',float), ('overlap',float),
                             ('Etotal',float), ('Eproj',float)])
+  runtype_map = {
+    # fields: constraint, projector
+    # DO NOT EDIT strings below (and they are case sensitive);
+    # other codes may depend on these exact names,
+    # so any edit can screw up those user codes.
+    0: ('none', 'hybrid'),
+    1: ('phaseless cosine', 'Elocal'),
+  }
+
   def parse_INFO(self, INFO):
     '''Gets all the necessary info (calculation parameters) from a
     GAFQMC INFO file.
@@ -53,6 +63,7 @@ class gafqmc_info(result_base):
     rslt = self
     rslt['info_file'] = INFO
     rslt['info_mtime'] = time.localtime(os.path.getmtime(INFO))
+    rx_iflg_constraint = regex(r'^\s*iflg_constraint\s*=\s*([0-9]+)')
     for L in info_file:
       Ls = L.strip()
       flds = Ls.split()
@@ -99,6 +110,13 @@ class gafqmc_info(result_base):
         rslt["nwlkmax"] = int(flds[1])
       elif Ls.startswith("nwlkmin="):
         rslt["nwlkmin"] = int(flds[1])
+      elif rx_iflg_constraint % Ls:
+        runtype = int(rx_iflg_constraint[1])
+        rslt["iflg_constraint"] = runtype
+        rslt["runtype"] = runtype  # keyword uniformity with PWQMC (recommended)
+        runtype_rec = self.runtype_map[runtype]
+        rslt["constraint"], rslt["projector"] \
+          = runtype_rec[:2]
 
       # ---runtime info below---
       elif Ls.startswith("Using OpenMP with number of threads = "):
@@ -131,6 +149,11 @@ class gafqmc_info(result_base):
 
     rslt.setdefault("nwlkmax", rslt.nwlk * 2)
     rslt.setdefault("nwlkmin", max(rslt.nwlk / 2, 1))
+    # fall back to original defaults:
+    rslt.setdefault("iflg_constraint", 1)
+    rslt.setdefault("runtype", 1)
+    rslt.setdefault("constraint", "phaseless cosine")
+    rslt.setdefault("projector", "Elocal")
 
     rslt["Evar_noconst"] = rslt["Evar"] - rslt["H0"]
     rslt["Etrial"] = rslt["Etrial_noconst"] + rslt["H0"]
