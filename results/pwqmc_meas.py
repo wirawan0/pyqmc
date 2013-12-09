@@ -558,7 +558,8 @@ class raw_meas_hdf5(object):
     return (wtwlkr_slices, El_slices, meas_recs)
 
   def load_meas_data(self, stage=None, match=None, append_to_raw=None,
-                     value_processor=None):
+                     value_processor=None,
+                     keep_El_imag=True, keep_phasefac=True):
     """Loads measurement records for a given stage (if `stage' is specified) or
     those matching given record (if `match' is specified).
 
@@ -578,10 +579,13 @@ class raw_meas_hdf5(object):
         value_processor(<value_dict>, <metadata_dict>)
     The values are given as <value_dict> with three keys:
         'E_l', 'wtwlkr', 'proc'.
-    The imaginary part of E_l is include, unless if it has already been
+
+    The arguments `keep_El_imag' and `keep_phasefac' has similar meaning
+    as in the conversion routines.
+    By default these are True, which means that the imaginary part of E_l and
+    the complex phase of wtwlkr are included, unless if they have already been
     discarded when converting from the *.ene files (see notes in
     convert_meas_to_hdf5_v2 method).
-
     """
     if append_to_raw != None:
       rslt = append_to_raw
@@ -617,9 +621,17 @@ class raw_meas_hdf5(object):
         data = { 'E_l': E_l, 'wtwlkr': wtwlkr, 'proc': proc }
         value_processor(data, meta)
 
+      if keep_El_imag:
+        val_El = E_l
+      else:
+        El=numpy.copy(E_l.real)
+      if keep_phasefac:
+        val_wtwlkr = wtwlkr
+      else:
+        val_wtwlkr = numpy.abs(wtwlkr)
       rec = rslt.add(iblk, imeas, \
-                     El=numpy.copy(E_l.real), \
-                     wtwlkr=wtwlkr)
+                     El=val_El, \
+                     wtwlkr=val_wtwlkr)
       # Also store the metadata here:
       rec.meta = m
 
@@ -1041,6 +1053,7 @@ class meas_text(object):
     Valid section names are "EQLB", "GRTH", or "MEAS" (according to the section
     strings dumped by PWQMC code).
     '''
+    from wpylib.math import complex_polar
     if fname != None: self.open(fname)
     if section != None and not self.seek_section(section, block, index):
       raise ValueError, \
@@ -1072,8 +1085,7 @@ class meas_text(object):
         break
 
       if keep_phasefac:
-        raise RuntimeError, "EXECUTING THIS TRIGGER A BUG IN THE CODE -- see file ERROR!"
-        w = complex(flds[1], flds[4])
+        w = complex_polar(float(flds[1]), float(flds[4]))
       else:
         w = float(flds[1])
       if keep_El_imag:
@@ -1375,6 +1387,7 @@ def convert_meas_to_hdf5_v2(output, H0=0, files=None, **opts):
   """
   global hdf5_conv_last  # for debugging
   from pyqmc.stats.avg import avg
+  from pprint import pformat
 
   Files = files
   files = meas_glob(Files)
@@ -1410,6 +1423,9 @@ def convert_meas_to_hdf5_v2(output, H0=0, files=None, **opts):
     dbg = lambda level, s: None
 
   mea_f = meas_text_class()
+
+  dbg(1, "Start convert_meas_to_hdf5_v2\n")
+  dbg(9, "Optional parameters:\n" + pformat(opts) + "\n")
 
   # If nwlkmax is not provided, we will have to estimate the nwlkmax:
   # This is not a safe or exact measurement, so nwlkmax better be provided.
