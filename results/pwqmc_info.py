@@ -19,6 +19,7 @@ import numpy
 from wpylib.iofmt.text_input import text_input
 from wpylib.db.result_base import result_base
 from wpylib.sugar import ifelse
+from wpylib.regexps import regex
 
 class pwqmc_info(result_base):
   '''Structure to represent the metadata contained in INFO file.
@@ -48,6 +49,16 @@ class pwqmc_info(result_base):
   # here.
   meas_jell_dtype = numpy.dtype([('beta',float), ('overlap',float),
                                  ('Eproj',float), ('Etotal',float)])
+  runtype_map = {
+    # fields: constraint, projector
+    # DO NOT EDIT strings below (and they are case sensitive);
+    # other codes may depend on these exact names,
+    # so any edit can screw up those user codes.
+    0: ('phaseless cosine', 'Elocal'),
+    1: ('phaseless cosine', 'hybrid'),
+    2: ('none no mfbg', 'hybrid'),  # almost not used
+    3: ('none', 'hybrid'),
+  }
 
   def parse_INFO(self, INFO):
     '''Gets all the necessary info (calculation parameters) from the INFO file.
@@ -60,6 +71,7 @@ class pwqmc_info(result_base):
     rslt = self
     rslt['info_file'] = INFO
     rslt['info_mtime'] = time.localtime(os.stat(INFO).st_mtime)
+    rx_runtype = regex(r'^\s*runtype\s*=\s*([0-9]+)')
     for L in info_file:
       Ls = L.strip()
       ls = Ls.lower()
@@ -140,6 +152,12 @@ class pwqmc_info(result_base):
         rslt["nwlkmax"] = int(flds[1])
       elif Ls.startswith("nwlkmin="):
         rslt["nwlkmin"] = int(flds[1])
+      elif rx_runtype % Ls:
+        runtype = int(rx_runtype[1])
+        rslt["runtype"] = runtype
+        runtype_rec = self.runtype_map[runtype]
+        rslt["constraint"], rslt["projector"] \
+          = runtype_rec[:2]
 
       # ---crystal and atom parameters, etc---
       # Wherever possible, we will use abinit-style keywords
@@ -170,6 +188,10 @@ class pwqmc_info(result_base):
     info_file.close()
     rslt.setdefault("nwlkmax", rslt.nwlk * 2)
     rslt.setdefault("nwlkmin", max(rslt.nwlk / 2, 1))
+    # fall back to original defaults:
+    rslt.setdefault("runtype", 0)
+    rslt.setdefault("constraint", "phaseless cosine")
+    rslt.setdefault("projector", "Elocal")
     rslt["run_mpi"] = ("num_tasks" in rslt)
     rslt["run_openmp"] = ("num_threads" in rslt)
     return rslt

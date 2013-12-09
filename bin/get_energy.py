@@ -26,6 +26,7 @@ from wpylib.iofmt.text_input import text_input, head, tail
 from pyqmc.results.gafqmc_info import gafqmc_info
 from pyqmc.results.pwqmc_info import pwqmc_info
 from pyqmc.results.meas_merge import merged_measurement
+from pyqmc import PyqmcDataError
 
 
 def is_afqmc_output(filename):

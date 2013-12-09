@@ -79,7 +79,7 @@ class corr_x3_fitting(object):
       Note that y can contain errorbar (i.e. values given as errorbar
       objects).
     """
-    x = numpy.array(x, copy=False).flatten()
+    x = numpy.array(x, copy=False, dtype=float).flatten()
     y = numpy.array(y, copy=False).flatten()
     invx3 = x**(-3)
 
@@ -166,8 +166,9 @@ def extrap_2pt(E1, x1, E2, x2):
   This tool should properly account the error bars in the
   energies E1 and E2, if they exist.
 
-  x1 and x2 are the correlation consistent basis cardinal number.
-  For proper operation, x2 must be greater than x1."""
+  x1 and x2 are the correlation consistent basis cardinal number."""
+  # Based on the formulas below, I recommended that x2 be
+  # greater than x1. Fortunately, this does not make a difference!
   dx = 1.0 / x1**3 - 1.0 / x2**3
   dE = E1 - E2
   slope_CBS = dE / dx
