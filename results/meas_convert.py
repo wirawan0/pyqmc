@@ -26,6 +26,9 @@ import pyqmc.results.gafqmc_meas as gmeas
 from pyqmc.results.pwqmc_info import \
   kptstr, pwqmc_info
 
+from pyqmc.results.gafqmc_info import \
+  gafqmc_info
+
 from wpylib.timer import timer
 from wpylib.text_tools import str_trunc_begin
 from wpylib.params.params_flat import Parameters
@@ -60,6 +63,14 @@ def dict_nested_copy_two_levels(d):
   for k in d:
     c[k] = d[k].copy()
   return c
+
+"""
+Default parameters for convert:
+
+db_hints: a dict, containing default parameters to be passed on to
+the actual converter machinery in pwqmc_meas module.
+
+"""
 
 class convert_ene2hdf5(object):
   """Main converter from *.ene files to a HDF5-formatted measurement file.
@@ -98,7 +109,7 @@ class convert_ene2hdf5(object):
         src="PWAF-meas.tar.lzma",
         info="INFO",
         output="measurements.h5",
-        hints={},
+        db_hints=dict(keep_phasefac='auto',keep_El_imag='auto',),
         E_prefactor=1.0,
         debug=1
       ),
@@ -108,7 +119,7 @@ class convert_ene2hdf5(object):
         src="GAFQMCF-meas.tar.lzma",
         info="INFO",
         output="measurements.h5",
-        hints=dict(keep_phasefac=1),
+        db_hints=dict(keep_phasefac='auto',keep_El_imag='auto',),
         E_prefactor=1.0,
         debug=1
       ),
@@ -193,7 +204,7 @@ class convert_ene2hdf5(object):
     #kpt_data1 = ALL_KPTS_DATA[cellstr][volstr][kpt_str]
     #E_GGA = ALL_KPTS_DATA[cellstr][volstr]['kgrid']['E_GGA']
     if 'Etrial_noconst' not in info:
-      raise RuntimeError, \
+      raise PyqmcDataError, \
         "Trial energy is not found in the INFO file: %s" % (info_file)
 
     use_tmpdir = False
@@ -221,7 +232,7 @@ class convert_ene2hdf5(object):
       raise ValueError, "Don't know how to handle src %s = %s" % (str(type(src)), str(src))
 
     try:
-      db_hints = copy(p.db_hints)
+      db_hints = dict(p.db_hints)
     except:
       db_hints = {}
 
@@ -231,6 +242,11 @@ class convert_ene2hdf5(object):
       #'default_raw_chunks': [1, info['nwlkmax']],
       #'value_processor': valpx,
     })
+    is_free_proj = info['constraint'] in ('none',)
+    if db_hints.get('keep_El_imag') == 'auto':
+      db_hints['keep_El_imag'] = is_free_proj
+    if db_hints.get('keep_phasefac') == 'auto':
+      db_hints['keep_phasefac'] = is_free_proj
 
     if p.E_prefactor != 1.0 and 'value_processor' not in db_hints:
       def valpx(data, meta, *junk1, **junk2):
@@ -305,6 +321,10 @@ class convert_ene2hdf5(object):
 
     db.flush()
     return db
+
+  @property
+  def convert_defaults(self):
+    return self.Default_params[self.info_class]['convert_defaults']
 
 
 class gafqmc_convert_ene2hdf5(convert_ene2hdf5):
