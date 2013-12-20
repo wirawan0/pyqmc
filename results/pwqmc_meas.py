@@ -569,7 +569,7 @@ class raw_meas_hdf5(object):
     Note that `stage' and `match' should not be specified simultaneously.
     Returns a raw_meas_data object for convenience.
 
-    The `append_to_raw' argument, if given, must be existing raw_meas_data
+    The `append_to_raw' argument, if given, must be an existing raw_meas_data
     object to which we want to append the dataset.
     This option is useful, for example, for chaining the raw data from various
     sequential parts of a QMC run.
@@ -580,12 +580,12 @@ class raw_meas_hdf5(object):
     The values are given as <value_dict> with three keys:
         'E_l', 'wtwlkr', 'proc'.
 
-    The arguments `keep_El_imag' and `keep_phasefac' has similar meaning
+    The arguments `keep_El_imag' and `keep_phasefac' have similar meanings
     as in the conversion routines.
     By default these are True, which means that the imaginary part of E_l and
     the complex phase of wtwlkr are included, unless if they have already been
     discarded when converting from the *.ene files (see notes in
-    convert_meas_to_hdf5_v2 method).
+    convert_meas_to_hdf5_v2 routine).
     """
     if append_to_raw != None:
       rslt = append_to_raw
@@ -775,6 +775,10 @@ class meas_hdf5(object):
     "FormatVersion": 0,
     "Devel_CVS_ID": "$Id: pwqmc_meas.py,v 1.10 2010-09-30 01:45:42 wirawan Exp $",
   }
+  # FIXME:
+  # - delete Devel_CVS_ID
+  # - add date/time of creation
+  # - ...what else?
 
   def __init__(self, fname=None, mode="a", create_raw=True):
     if fname: self.open(fname, mode=mode, create_raw=create_raw)
