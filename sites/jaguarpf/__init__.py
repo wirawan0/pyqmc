@@ -54,7 +54,9 @@ class site_config(pyqmc.sites.site_config_base):
     - lustre shared space
     """
     pathcat = os.path.join
-    self._defattr('SCR_ROOT', pathcat('/tmp/work', self.USER))
+    # WARNING: Since 201401, the project name *must* be appended to this
+    # rootdir since the directory below *is* read-only:
+    self._defattr('SCR_ROOT', pathcat('/lustre/atlas/scratch', self.USER))
 
 def getusername():
   return os.environ['USER']
