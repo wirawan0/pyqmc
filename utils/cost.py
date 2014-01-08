@@ -255,7 +255,9 @@ class real_qmc_cost(object):
     self.nwlkavg_proc = float(info.nwlk) / info.num_tasks
 
     # nwsteps = number of walker-steps (total during QMC run), per MPI task
-    self.nwsteps_min = self.nsteps_all * self.nwlkmin_proc   # est. by nwlkmin_proc
+    # Tentative fix: The minimum is always defined with nwlkmin_proc >= 1
+    # to avoid division by zero error:
+    self.nwsteps_min = self.nsteps_all * max(self.nwlkmin_proc,1)   # est. by nwlkmin_proc
     self.nwsteps_avg = self.nsteps_all * self.nwlkavg_proc   # est. by nwlkavg_proc
     self.tsteps_max = self.walltime / self.nwsteps_min
     self.tsteps_avg = self.walltime / self.nwsteps_avg
