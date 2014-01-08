@@ -12,7 +12,7 @@ Site-specific support for pyqmc library.
 This module is part of PyQMC project.
 
 This module provides support and specific tools for OLCF jaguarpf
-supercomputer and its predecessors (titan, ...).
+supercomputer and its more recent incarnations (titan, ...).
 
 """
 
