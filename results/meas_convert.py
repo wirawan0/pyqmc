@@ -111,7 +111,8 @@ class convert_ene2hdf5(object):
         output="measurements.h5",
         db_hints=dict(keep_phasefac='auto',keep_El_imag='auto',),
         E_prefactor=1.0,
-        debug=1
+        debug=1,
+        time=1,
       ),
     ), # pwqmc_info
     ginfo.gafqmc_info: dict(
@@ -121,7 +122,8 @@ class convert_ene2hdf5(object):
         output="measurements.h5",
         db_hints=dict(keep_phasefac='auto',keep_El_imag='auto',),
         E_prefactor=1.0,
-        debug=1
+        debug=1,
+        time=1,
       ),
     ), # gafqmc_info
   }
@@ -162,6 +164,15 @@ class convert_ene2hdf5(object):
     Additional methods, if defined in the derived object, will be called:
     * convert_preamble_steps_(hint, info, opts)
     * convert_postamble_steps_(hdf5_raw_group, info, opts)
+
+    Optional arguments:
+    * logfile: a file-like object (or a filename) to log the output of this
+      routine and its called routines.
+      A default can be given as "self.opts.logfile".
+      Note:
+      - `logfile' parameter is more recommended than the lower-level
+        db_hints['debug_out'] field passed to the actual converter routine.
+      - If both are defined, the `debug_out' takes greater precedence.
     """
     # FIXME: use self-introspection to reduce kitchen-sink params here:
     #p = Parameters(locals(), _opts_, _opts_.get('opts'), self.opts, _defaults)
@@ -182,6 +193,15 @@ class convert_ene2hdf5(object):
     else:
       info = info_file
       info_file = info['info_file']
+
+    try:
+      lf = p.logfile
+    except:
+      logfile = text_output()
+      has_logfile = False
+    else:
+      logfile = text_output(lf)
+      has_logfile = True
 
     # Deduce the datatype of the info structure:
     info_dtype = None
@@ -210,15 +230,15 @@ class convert_ene2hdf5(object):
     use_tmpdir = False
     if isinstance(src, basestring):
       if src.endswith(".tar.lzma"):
-        os.chdir(p.TMPDIR)
-        sh.system("rm -rf *" % (p.TMPDIR,)) # always start clean
+        sh.mcd(p.TMPDIR)
+        sh.system("rm -rf *") # always start clean
         os.chdir(orig_dir)
         os.run("tar", ("-C", p.TMPDIR, "--use-compress-program=lzma", "-xf", src))
         files = TMPDIR + "/*.ene"
         use_tmpdir = True
       elif src.endswith(".tar.bz2"):
-        os.chdir(p.TMPDIR)
-        sh.system("rm -rf *" % (p.TMPDIR,)) # always start clean
+        sh.mcd(p.TMPDIR)
+        sh.system("rm -rf *") # always start clean
         os.chdir(orig_dir)
         os.run("tar", ("-C", p.TMPDIR, "-j", "-xf", src))
         files = TMPDIR + "/*.ene"
@@ -247,6 +267,8 @@ class convert_ene2hdf5(object):
       db_hints['keep_El_imag'] = is_free_proj
     if db_hints.get('keep_phasefac') == 'auto':
       db_hints['keep_phasefac'] = is_free_proj
+    if "debug_out" not in db_hints and has_logfile:
+      db_hints['debug_out'] = logfile
 
     if p.E_prefactor != 1.0 and 'value_processor' not in db_hints:
       def valpx(data, meta, *junk1, **junk2):
@@ -312,14 +334,16 @@ class convert_ene2hdf5(object):
       self.convert_postamble_steps_(raw_group=job0, info=info, opts=p)
 
     tm2 = time.clock()
-    print "%s : ET = %g; total time = %d; %s" % \
+    logfile("%s : ET = %g; total time = %d s; %s\n" % \
       (output,
        job0.attrs['Etrial'],
        tm2 - tm1,
        str_trunc_begin(System, 64),
       )
+    )
 
     db.flush()
+    logfile.close()
     return db
 
   @property
