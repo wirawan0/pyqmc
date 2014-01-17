@@ -159,8 +159,9 @@ class emergency_walkers_fixup(object):
 
 
   def copy_file(self, src, dest):
+    from wpylib.file.file_utils import relpath
     # FIXME--may want real copy command, perhaps?
-    sh.provide_link(dest, sh.relpath(dirname(abspath(dest)), abspath(src)))
+    sh.provide_link(dest, relpath(dirname(abspath(dest)), abspath(src)))
 
 
 

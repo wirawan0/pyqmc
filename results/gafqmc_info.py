@@ -18,10 +18,11 @@ import time
 
 import numpy
 
-from wpylib.iofmt.text_input import text_input
+from wpylib.iofmt.text_input import text_input, head, tail
 from wpylib.db.result_base import result_base
 from wpylib.sugar import ifelse
 from wpylib.regexps import regex
+from wpylib.text_tools import str_grep
 
 class gafqmc_info(result_base):
   '''Structure to represent the metadata contained in INFO file
@@ -223,3 +224,31 @@ class gafqmc_info(result_base):
     rslt["meas_energy"] = numpy.array(meas, dtype=dtype)
 
   parse_file_ = parse_INFO
+
+
+def is_gafqmc_info(filename):
+  """Detects whether a file is
+  """
+  # TODO: This is a placeholder routine (API) for what could be more advanced
+  # in the future.
+  # Copied from gafqmc_quick_dirty.
+  snippet = head(filename, 400)
+  if str_grep("GAFQMC - Generic auxiliary-field quantum Monte Carlo", snippet):
+    return True
+  elif str_grep("Generic Auxiliary field Quantum Monte Carlo (GAFQMC)", snippet):
+    # gen76 and gen79 has this
+    return True
+  else:
+    return False
+
+
+def is_gafqmc_info_finished(filename):
+  # TODO: This is a placeholder routine (API) for what could be more advanced
+  # in the future.
+  # Copied from gafqmc_quick_dirty.
+  if is_gafqmc_info(filename):
+    snippet = tail(filename, 400)
+    if str_grep("Summary of energies:", snippet):
+      return True
+  return False
+
