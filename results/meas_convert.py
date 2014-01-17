@@ -174,6 +174,7 @@ class convert_ene2hdf5(object):
         db_hints['debug_out'] field passed to the actual converter routine.
       - If both are defined, the `debug_out' takes greater precedence.
     """
+    from wpylib.iofmt.text_output import text_output
     # FIXME: use self-introspection to reduce kitchen-sink params here:
     #p = Parameters(locals(), _opts_, _opts_.get('opts'), self.opts, _defaults)
     # The function defaults are now provided in the
