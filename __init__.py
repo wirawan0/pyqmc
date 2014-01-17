@@ -16,3 +16,7 @@ class PyqmcDataError(Exception):
 
 class PyqmcParseError(Exception):
   """Parser related error (e.g. for text files)."""
+
+class PyqmcWarning(Warning):
+  """PyQMC-related warnings."""
+
