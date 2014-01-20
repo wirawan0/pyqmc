@@ -1524,7 +1524,7 @@ def convert_meas_to_hdf5_v2(output, H0=0, files=None, **opts):
           sect_info2 = mea_f.seek_any_section()
           if sect_info2 != None:
             # check sect_info2 against sect_info[iblkread]!
-            if sect_info[iblkread] == None:
+            if sect_info.get(iblkread, None) == None:
               sect_info[iblkread] = sect_info2
             if sect_info[iblkread][0:3] != sect_info2[0:3]:
               sys.stderr.write("\n".join([
