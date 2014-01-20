@@ -308,7 +308,10 @@ class raw_meas_hdf5(object):
                  reserve_size = None):
     '''Appends a new row on the measurement record.
     The select_row option makes the newly created row as the current row.
-    The reserve_columns option makes space for at least
+    This method primarily records only the new row's metadata into the
+    metadata table.
+    The `reserve_size' option can be used to make room for at least
+    `reserve_size' number of elements in the measurement data storage.
     Returns the integer index of the new measurement row.'''
     self.check_alive()
     g = self.raw_group
@@ -991,16 +994,18 @@ class meas_text(object):
     return False
 
   def seek_any_section(self):
-    '''Seeks forward the any next named section.
+    '''Seeks forward to the next named section (any kind).
     Returns a tuple of 4 elements: (stage, block, index, ndata).
     Stage is an integer of value 0 (equilibration), 1 (growth), or 2
     (measurement). Block is the block number (0, 1, 2, ...).
-    Index indicates the measurement index. (??? <<< FIXME DOC HERE)
+    Index indicates the step counter (cf. variable 'istp') in the main
+    random-walk loop at this particular block.
     Ndata is the number of data points in this measurement block (per
     MPI process).
     On the earliest (obsolete) dataset format, Ndata field is nonexistent,
     and it is set to None.
-    Returns None if there is no more measurement section detected.
+    This function returns None if there is no more measurement section
+    detected.
     '''
     F = self.file
     line = F.readline()
