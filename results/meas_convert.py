@@ -67,8 +67,9 @@ def dict_nested_copy_two_levels(d):
 """
 Default parameters for convert:
 
-db_hints: a dict, containing default parameters to be passed on to
-the actual converter machinery in pwqmc_meas module.
+backend_opts: a dict, containing default parameters to be passed on to
+the actual converter machinery in pwqmc_meas module
+(routine: convert_meas_to_hdf5_v2).
 
 """
 
@@ -109,7 +110,7 @@ class convert_ene2hdf5(object):
         src="PWAF-meas.tar.lzma",
         info="INFO",
         output="measurements.h5",
-        db_hints=dict(keep_phasefac='auto',keep_El_imag='auto',),
+        backend_opts=dict(keep_phasefac='auto',keep_El_imag='auto',),
         E_prefactor=1.0,
         debug=1,
         time=1,
@@ -120,7 +121,7 @@ class convert_ene2hdf5(object):
         src="GAFQMCF-meas.tar.lzma",
         info="INFO",
         output="measurements.h5",
-        db_hints=dict(keep_phasefac='auto',keep_El_imag='auto',),
+        backend_opts=dict(keep_phasefac='auto',keep_El_imag='auto',),
         E_prefactor=1.0,
         debug=1,
         time=1,
@@ -150,7 +151,7 @@ class convert_ene2hdf5(object):
               **_opts_):
     #def convert(src="PWAF-meas.tar.lzma", info="INFO",
     #            output="measurements.h5",
-    #            db_hints={},
+    #            backend_opts={},
     #            debug=1):
     """Converts a set of measurement data (*.ene) to a standard meas_hdf5's
     HDF5 database.
@@ -171,7 +172,7 @@ class convert_ene2hdf5(object):
       A default can be given as "self.opts.logfile".
       Note:
       - `logfile' parameter is more recommended than the lower-level
-        db_hints['debug_out'] field passed to the actual converter routine.
+        backend_opts['debug_out'] field passed to the actual converter routine.
       - If both are defined, the `debug_out' takes greater precedence.
     """
     from wpylib.iofmt.text_output import text_output
@@ -253,34 +254,34 @@ class convert_ene2hdf5(object):
       raise ValueError, "Don't know how to handle src %s = %s" % (str(type(src)), str(src))
 
     try:
-      db_hints = dict(p.db_hints)
+      backend_opts = dict(p.backend_opts)
     except:
-      db_hints = {}
+      backend_opts = {}
 
-    db_hints.update({
+    backend_opts.update({
       'nwlkavg': info['nwlk'],
       'nwlkmax': info['nwlkmax'],
       #'default_raw_chunks': [1, info['nwlkmax']],
       #'value_processor': valpx,
     })
     is_free_proj = info['constraint'] in ('none',)
-    if db_hints.get('keep_El_imag') == 'auto':
-      db_hints['keep_El_imag'] = is_free_proj
-    if db_hints.get('keep_phasefac') == 'auto':
-      db_hints['keep_phasefac'] = is_free_proj
-    if "debug_out" not in db_hints and has_logfile:
-      db_hints['debug_out'] = logfile
+    if backend_opts.get('keep_El_imag') == 'auto':
+      backend_opts['keep_El_imag'] = is_free_proj
+    if backend_opts.get('keep_phasefac') == 'auto':
+      backend_opts['keep_phasefac'] = is_free_proj
+    if "debug_out" not in backend_opts and has_logfile:
+      backend_opts['debug_out'] = logfile
 
-    if p.E_prefactor != 1.0 and 'value_processor' not in db_hints:
+    if p.E_prefactor != 1.0 and 'value_processor' not in backend_opts:
       def valpx(data, meta, *junk1, **junk2):
         """Rescales the energy values (real and imaginary!)."""
         data['E_l'] *= p.E_prefactor
-      db_hints['value_processor'] = valpx
+      backend_opts['value_processor'] = valpx
 
     if 'convert_preamble_steps_' in dir(self):
       # This is useful for e.g. adding default_raw_chunks, defining
       # value_processor, etc.
-      self.convert_preamble_steps_(hints=db_hints, info=info, opts=p)
+      self.convert_preamble_steps_(hints=backend_opts, info=info, opts=p)
       # Examples:
       # in MnO 2x2x2:
       #    natoms = cell_info[cellstr]['natoms']
@@ -298,7 +299,7 @@ class convert_ene2hdf5(object):
            betablk=info["betablk"], deltau=info["deltau"],
            H0=info["H0"],
            debug=p.debug,
-           **db_hints
+           **backend_opts
          )
     db.flush()
     if p.debug > 0:
@@ -350,6 +351,11 @@ class convert_ene2hdf5(object):
   @property
   def convert_defaults(self):
     return self.Default_params[self.info_class]['convert_defaults']
+
+  @property
+  def backend_opts(self):
+    return self.convert_defaults['backend_opts']
+
 
 
 class gafqmc_convert_ene2hdf5(convert_ene2hdf5):
