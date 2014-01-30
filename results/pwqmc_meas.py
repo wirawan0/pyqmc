@@ -20,6 +20,7 @@ import h5py # HDF5 Python API
 import numpy
 
 from wpylib.timer import timer
+from pyqmc import PyqmcError
 
 class raw_meas_rec(object):
   """Raw measurement record from one of the "load" functions.
@@ -995,11 +996,16 @@ class meas_text(object):
 
   def seek_any_section(self):
     '''Seeks forward to the next named section (any kind).
-    Returns a tuple of 4 elements: (stage, block, index, ndata).
+    Returns a tuple of 4 elements: (stage, block, imeas, ndata).
     Stage is an integer of value 0 (equilibration), 1 (growth), or 2
-    (measurement). Block is the block number (0, 1, 2, ...).
-    Index indicates the step counter (cf. variable 'istp') in the main
-    random-walk loop at this particular block.
+    (measurement).
+    Block is the block number (0, 1, 2, ...).
+    Imeas indicates the iteration counter for this particular block
+    (cf. variable 'istp' in the Fortran code, which starts at 1 at the
+    first iteration) in the main random-walk's (inner) loop
+    Imeas does not always go as 1, 2, 3...; rather, as the value of the
+    'istp' iteration variable, at which iteration the measurement data
+    was obtained.
     Ndata is the number of data points in this measurement block (per
     MPI process).
     On the earliest (obsolete) dataset format, Ndata field is nonexistent,
@@ -1368,6 +1374,18 @@ def convert_meas_to_hdf5_v2(output, H0=0, files=None, **opts):
   . dataset_group: the HDF5 group to contain the measurement data.
     If not specified, the default dataset group specified in the HDF5
     measurement file is used.
+  . read_blocksize: number of measurement sections/blocks to read at one time
+    (default 5). Used for speed-memory trade-off.
+  . match: an optional function that takes a tuple (>= 4 elements),
+    where the first four are (stage, block, index, ndata) as returned by
+    meas_text.seek_any_section() routine.
+    This function can be used to control the converter to include or exclude
+    measurement sections, or to stop the conversion process; the function
+    must return one of the following values:
+      +1 = include this section's data
+       0 = exclude this section's data
+      -1 = exclude this section's data and quit processing immediately
+    This function is called only once per section.
   . value_processor: an optional routine which takes a structured numpy array
     and cooks the values *in place* before archiving these values in the HDF5
     database. Useful for preprocessing of the values, like scaling, adding
@@ -1415,6 +1433,7 @@ def convert_meas_to_hdf5_v2(output, H0=0, files=None, **opts):
   debug_out = opts.get("debug_out", sys.stderr)
   keep_El_imag = opts.get("keep_El_imag", True)
   keep_phasefac = opts.get("keep_phasefac", False)
+  match = opts.get("match", (lambda rec, args: 1))
   valpx = opts.get("value_processor", None)
   meas_hdf5_class = opts.get("meas_hdf5_class", meas_hdf5)
   meas_text_class = opts.get("meas_text_class", meas_text)
@@ -1499,14 +1518,26 @@ def convert_meas_to_hdf5_v2(output, H0=0, files=None, **opts):
   read_size_actual = numpy.zeros((numcpu,), dtype=int)
   nwlkr = numpy.zeros((read_blocksize,), dtype=int)
   filepos = [None] * numcpu
-  nread_total = 0
-  nblk = 0
+  nblk = 0      # num of data blocks encountered
+  nconv = 0     # num of data blocks converted/recorded to HDF5 format
+  flg_Stop = 0  # set to 1 to stop the conversion process
+
+  # Extra arguments to be passed on to match() routine below.
+  match_args = {
+    'betablk': betablk,
+    'deltau': deltau,
+    'nwlkmax': nwlkmax,
+    'nwlkavg': nwlkavg,  # beware: meaning could be dubious
+  }
   while True:
     read_size_actual[:] = 0
     nwlkr[:] = 0
     sect_info = {}
+    sect_status = {}
     dbg(10, "Reading measurement records #%d\n" % (nblk))
 
+    # Load the measurement data blocks, one file at a time,
+    # each reading at most `read_blocksize' data blocks.
     for icpu in xrange(len(files)):
       fname = files[icpu]
       mea_f.open(fname)
@@ -1517,43 +1548,52 @@ def convert_meas_to_hdf5_v2(output, H0=0, files=None, **opts):
 
       for iblkread in xrange(read_blocksize):
         nwlk1 = nwlkr[iblkread]
-        if icpu == 0:
-          sect_info2 = mea_f.seek_any_section()
-          sect_info[iblkread] = sect_info2
+
+        sect_info2 = mea_f.seek_any_section()
+        # Note: We won't assume that process rank #0 always has this
+        # section of measurement, to allow the script to finish gracefully
+        # if the measurements are not properly recorded (usually the last
+        # few records in an improperly terminated parallel run).
+        if sect_info2 != None:
+          # check sect_info2 against sect_info[iblkread]!
+          if sect_info.get(iblkread, None) == None:
+            sect_info[iblkread] = sect_info2
+            sect_status[iblkread] = match(sect_info2, match_args)
+          if sect_info[iblkread][0:3] != sect_info2[0:3]:
+            sys.stderr.write("\n".join([
+              "Wrong section header encountered in file " + mea_f.file.name,
+              "Read header info: " + repr(sect_info2[0:3]),
+              "Wanted: ", repr(sect_info[iblkread][0:3]),
+              "icpu = " + str(icpu),
+              "iblkread = " + str(iblkread),
+            ]))
+            raise PyqmcParseError, \
+              "Wrong section header encountered in file " + mea_f.file.name
         else:
-          sect_info2 = mea_f.seek_any_section()
-          if sect_info2 != None:
-            # check sect_info2 against sect_info[iblkread]!
-            if sect_info.get(iblkread, None) == None:
-              sect_info[iblkread] = sect_info2
-            if sect_info[iblkread][0:3] != sect_info2[0:3]:
-              sys.stderr.write("\n".join([
-                "Wrong section header encountered in file " + mea_f.file.name,
-                "Read header info: " + repr(sect_info2[0:3]),
-                "Wanted: ", repr(sect_info[iblkread][0:3]),
-                "icpu = " + str(icpu),
-                "iblkread = " + str(iblkread),
-              ]))
-              raise RuntimeError, \
-                "Wrong section header encountered in file " + mea_f.file.name
+          # No more measurement found--stop the iteration for this file.
+          break
+        dbg(100, "  section: %s : %s\n" % (str(sect_info2), sect_status[iblkread]))
 
-        if sect_info2 == None: break
-        dbg(100, "  section: %s\n" % (str(sect_info2)))
+        # If this section is marked for inclusion, then read it,
+        # otherwise don't bother:
+        if sect_status[iblkread] == 1:
+          T.start()
+          mea_f.read_section(keep_El_imag=keep_El_imag, \
+                             keep_phasefac=keep_phasefac, \
+                             H0=H0, out=mea_buff[iblkread, nwlk1:])
+          tm_readsect += T.stop()
 
-        T.start()
-        mea_f.read_section(keep_El_imag=keep_El_imag, \
-                           keep_phasefac=keep_phasefac, \
-                           H0=H0, out=mea_buff[iblkread, nwlk1:])
-        tm_readsect += T.stop()
+          dbg(100, "  read %d data\n" % (mea_f.ndata))
+          dbg(101, "ndata,lastpos = %d %d" % (mea_f.ndata, mea_f.lastpos))
+          mea_buff['proc'][iblkread, nwlk1 : nwlk1+mea_f.ndata] = mea_f.proc_rank
+          nwlkr[iblkread] += mea_f.ndata
+        else:
+          dbg(100, "  section skipped\n")
 
-        dbg(100, "  read %d data\n" % (mea_f.ndata))
-
-        mea_buff['proc'][iblkread, nwlk1 : nwlk1+mea_f.ndata] = mea_f.proc_rank
-
-        dbg(101, "ndata,lastpos = %d %d" % (mea_f.ndata, mea_f.lastpos))
-        nwlkr[iblkread] += mea_f.ndata
-        filepos[icpu] = mea_f.lastpos
+        # whether the data is skipped, we must mark this section as "read":
         read_size_actual[icpu] += 1
+        # must always record the last file position
+        filepos[icpu] = mea_f.lastpos
 
       mea_f.close()
 
@@ -1571,6 +1611,20 @@ def convert_meas_to_hdf5_v2(output, H0=0, files=None, **opts):
           )
 
     for iblkread in xrange(minblkread):
+      status = sect_status[iblkread]
+      if status == 1:
+        pass # yes, do the conversion
+      elif status == 0:
+        continue
+      elif status == -1:
+        flg_Stop = 1
+        break
+      else:
+        raise PyqmcError, \
+          ("BUG: Invalid value of sect_status[%s] = %s , " \
+           + "returned by match() user-defined function.") \
+          % (iblkread, status)
+
       # add the measurement data to the HDF5 database
       nwlk1 = nwlkr[iblkread]
       (stage, iblk, imeas, ndata) = sect_info[iblkread]
@@ -1598,16 +1652,17 @@ def convert_meas_to_hdf5_v2(output, H0=0, files=None, **opts):
                                wtwlkr=mea_buff[iblkread, 0:nwlk1]['wtwlkr'], \
                                proc=mea_buff[iblkread, 0:nwlk1]['proc'])
       tm_append += T.stop()
+      nconv += 1
 
     nblk += minblkread
 
-    nread_total += minblkread
-    if minblkread == 0: break
+    if minblkread == 0 or flg_Stop == 1: break
   # end main loop
 
   rslt.flush()
 
-  dbg(1, "Total %d measurement blocks read\n" % (nread_total))
+  dbg(1, "Total %d measurement blocks encountered\n" % (nblk))
+  dbg(1, "Total %d measurement blocks converted\n" % (nconv))
 
   if optTime or optDebug > 100:
     dbg(0, "read_section = %.3f %d\n" % (tm_readsect(), tm_readsect.N))
