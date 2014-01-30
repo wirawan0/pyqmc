@@ -11,10 +11,14 @@
 #from pyqmc.walkers import *
 pass
 
-class PyqmcDataError(Exception):
+class PyqmcError(Exception):
+  """PyQMC errors (unspecified in nature).
+  This is a base error for more-specific PyQMC-related errors."""
+
+class PyqmcDataError(PyqmcError):
   """Data related error (whether in-memory or on-disk)."""
 
-class PyqmcParseError(Exception):
+class PyqmcParseError(PyqmcError):
   """Parser related error (e.g. for text files)."""
 
 class PyqmcWarning(Warning):
