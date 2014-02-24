@@ -27,6 +27,7 @@ _sites_supported = [
   'sciclone',
 # Private sites
   'wirawan0',
+  'orbital',
 ]
 
 """Some internal variables declared here:
