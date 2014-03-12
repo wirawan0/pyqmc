@@ -210,9 +210,9 @@ class weighted_samples(object):
       blk_Xw = self.X_w[shift : reblk_ndata+shift].reshape(blksize, reblk_nblk).T
 
     reblk_w = blk_w.sum(1)
-    reblk_X_w = blk_Xw.sum(1)
+    reblk_Xw = blk_Xw.sum(1)
     # This is the reblocked averages: array[0:reblk_nblk]
-    reblk_X = reblk_X_w / reblk_w
+    reblk_X = reblk_Xw / reblk_w
 
     if save:
       #L = locals()
@@ -226,7 +226,94 @@ class weighted_samples(object):
         blk_w=blk_w,
         blk_Xw=blk_Xw,
         reblk_w=reblk_w,
-        reblk_X_w=reblk_X_w,
+        reblk_Xw=reblk_Xw,
+        reblk_X=reblk_X,
+      )
+      self._reblk_rec = rec
+      if stats in ('std',):
+        rec['mean'] = average(rec.reblk_X)
+        rec['std'] = std(rec.reblk_X, ddof=1)
+        rec['var'] = rec.std**2
+        rec['err'] = rec.std / sqrt(rec.reblk_nblk)
+
+    return (reblk_X, reblk_w)
+
+  def _reblock_p0(self, blkcount):
+    """Method `0' for partitioning samples."""
+    ndata = self.ndata
+    len_padded = ((ndata + blkcount - 1) // blkcount) * blkcount
+    shift = 0
+    reblk_ndata = len_padded
+
+    if len_padded == ndata:
+      # Divisible case, revert to the standard transpose
+      blksize = ndata // blkcount
+      blk_w = self.w[shift : reblk_ndata+shift].reshape(blkcount, blksize)
+      blk_Xw = self.X_w[shift : reblk_ndata+shift].reshape(blkcount, blksize)
+    else:
+      # Copy the array to temporary staging with interspersed padding.
+      w_padded = numpy.zeros((len_padded,), dtype=self.w.dtype)
+      Xw_padded = numpy.zeros((len_padded,), dtype=self.X_w.dtype)
+      blksize_padded = len_padded // blkcount
+      iblk = numpy.arange(blkcount+1) # , dtype=float)
+      jstart = numpy.round(float(ndata) / blkcount * iblk).astype(int)
+      src_begin = jstart[:-1]
+      src_end = jstart[1:]
+      dest_begin = numpy.arange(0, len_padded, blksize_padded)
+      dest_end = dest_begin + src_end - src_begin
+      for (sb, se, db, de) in zip(src_begin, src_end, dest_begin, dest_end):
+        w_padded[db:de] = self.w[sb:se]
+        Xw_padded[db:de] = self.X_w[sb:se]
+      blk_w = w_padded[shift : reblk_ndata+shift].reshape(blkcount, blksize_padded)
+      blk_Xw = Xw_padded[shift : reblk_ndata+shift].reshape(blkcount, blksize_padded)
+
+    return (blk_w, blk_Xw)
+
+  def reblock_p(self, blkcount, method=0, save=False, stats="std"):
+    """Alternative way to reblock the data by partitioning the samples into
+    `blkcount' blocks.
+    The spillover data points (that would not have been accounted for in
+    the reblock() method) will be included as extra points in some blocks.
+
+    The `save' argument, if evaluates to Boolean True, saves the calculated
+    values & intermediate arrays to _reblk_rec array.
+
+    The `stat' argument specifies the extra statistical processings done
+    on the reblocked data:
+    - 'std' computes variance, standard deviation, and standard error.
+
+    """
+    from numpy import average, std, sqrt
+    ndata = self.ndata
+    assert blkcount > 0
+    assert blkcount <= ndata
+    reblk_nblk = blkcount
+    reblk_ndata = ndata
+    # blksize is the *average* number of data points per block
+    blksize = float(ndata) / blkcount
+
+    # Reshape the arrays for quick averaging:
+    if method == 0:
+      (blk_w, blk_Xw) = self._reblock_p0(blkcount)
+    else:
+      raise ValueError, "Invalid method=%s" % (method,)
+
+    reblk_w = blk_w.sum(1)
+    reblk_Xw = blk_Xw.sum(1)
+    # This is the reblocked averages: array[0:reblk_nblk]
+    reblk_X = reblk_Xw / reblk_w
+
+    if save:
+      #L = locals()
+      rec = result_base(
+        raw_ndata=ndata,
+        blksize=blksize,
+        reblk_nblk=reblk_nblk,
+        reblk_ndata=reblk_ndata,
+        blk_w=blk_w,
+        blk_Xw=blk_Xw,
+        reblk_w=reblk_w,
+        reblk_Xw=reblk_Xw,
         reblk_X=reblk_X,
       )
       self._reblk_rec = rec
