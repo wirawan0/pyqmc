@@ -78,9 +78,32 @@ class hf_exp_fitting(object):
   debug = 0
   def __call__(self, C, x):
     return C[0] + C[1] * numpy.exp(-numpy.abs(C[2])*x[0])
-  def Guess_xy(self, x, y):
+  def Guess_xy_old(self, x, y):
     imin = numpy.argmin(y)
     return (y[imin], 0, 0)
+  def Guess_xy(self, x, y):
+    """A better guess for exponential ansatz for CBS extrapolation.
+    Naive guess with b = c = 0 can sometimes lead to pathological fit,
+    so a better guess is needed.
+    See routine Test_initial_guess for the rationale of the approximation.
+    """
+    from numpy import asarray, argsort, log, exp
+    #xarr = asarray(x)
+    #yarr = asarray(y)
+    x = x[0]
+    assert len(x) >= 3
+    assert len(y) >= 3
+    iorder = argsort(x)
+    # choose the extremes in such a way to minimize the guess error
+    (x1, x2, x3) = tuple(x[iorder[i]] for i in [0,-2,-1])
+    (y1, y2, y3) = tuple(y[iorder[i]] for i in [0,-2,-1])
+    D23 = y2 - y3
+    D13 = y1 - y3
+    E0 = y3
+    c = -log(D23 / D13) / (x2 - x1)
+    b = exp(c * x2) * (y2 - E0)
+    print E0, b, c
+    return (E0, b, c)
   def extrap(self, x, y):
     """Main function for basis extrapolation.
 
@@ -204,3 +227,90 @@ def Test_2():
   E = [-681.070870436,  -681.073942348,  -681.074733235]
   x = 3
   return extrap_cbs_hf(E,x)
+
+
+def Test_initial_guess():
+  """[20140329]
+
+  The CBS extrap formula is:
+
+      E(x) = E0 + b * exp(-c*x)
+
+  Define:
+
+      D12 = E(x1) - E(x2)
+      D13 = E(x1) - E(x3)
+      D23 = E(x2) - E(x3)
+
+  Then:
+
+      D12 = B exp(-c*x1) * ( 1 - exp(-c*(x2-x1)) )
+      D13 = B exp(-c*x1) * ( 1 - exp(-c*(x3-x1)) )
+      D23 = B exp(-c*x2) * ( 1 - exp(-c*(x3-x2)) )
+
+      D23   1 - exp(-c*(x2-x3))
+      --- = -------------------
+      D13   1 - exp(-c*(x1-x3))
+
+  which leads to an equation
+
+      exp(-c*(x2-x1)) * ( 1 - (D12/D13) exp(-c*(x3-x2)) ) = 1 - (D12/D13)
+
+  Now we do some approximation, noting the following:
+
+  - if x1 < x2 < x3, then the dying exponential trend should lead to
+
+      |D23| < |D12| < |D13|
+
+  - furthermore c should be a positive constant
+
+  The crudest approximation is this:
+
+      D23   exp(-c*x2) - exp(-c*x3)
+      --- = -----------------------  ~ exp(-c*(x2-x1))
+      D13   exp(-c*x1) - exp(-c*x3)  ~
+
+  This leads to a guess values of:
+      E0 = min(E(:))
+      c = -log( D23/D13 ) / (x2 - x1)
+      b = exp(c*x2) * (E(x2) - E0)
+
+  """
+  from numpy import asarray
+  from wpylib.text_tools import make_matrix as mtx
+  Test_set_1_text = """
+  # From Cr2 project, CBS extrap, r=1.6000
+  # In the original algorithm < 20140328, this leads to unsuccessful fit.
+  # x    Ebind (RHF)
+    3    0.72742565
+    4    0.72562349
+    5    0.72536297
+  """
+  Test_set_1_params = [ # from gnuplot
+    0.725318945019849, 0.697365649857968, 1.93406159078189
+  ]
+  dset_text = Test_set_1_text
+  dset = asarray(mtx(dset_text))
+  dset_x = dset[:,0]
+  dset_y = dset[:,1]
+
+  def make_guess(x, y):
+    from numpy import asarray, argsort, log, exp
+    #xarr = asarray(x)
+    #yarr = asarray(y)
+    assert len(x) >= 3
+    assert len(y) >= 3
+    iorder = argsort(x)
+    # choose the extremes in such a way to minimize the guess error
+    (x1, x2, x3) = tuple(x[iorder[i]] for i in [0,-2,-1])
+    (y1, y2, y3) = tuple(y[iorder[i]] for i in [0,-2,-1])
+    D23 = y2 - y3
+    D13 = y1 - y3
+    E0 = y3
+    c = -log(D23 / D13) / (x2 - x1)
+    b = exp(c * x2) * (y2 - E0)
+    print E0, b, c
+    return (E0, b, c)
+
+  make_guess(dset_x, dset_y)
+
