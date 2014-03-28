@@ -77,7 +77,7 @@ class hf_exp_fitting(object):
   fit_opts = dict(xtol=1e-8, maxfun=100000, maxiter=10000, disp=0)
   debug = 0
   def __call__(self, C, x):
-    return C[0] + C[1] * numpy.exp(-C[2]*x[0])
+    return C[0] + C[1] * numpy.exp(-numpy.abs(C[2])*x[0])
   def Guess_xy(self, x, y):
     imin = numpy.argmin(y)
     return (y[imin], 0, 0)
