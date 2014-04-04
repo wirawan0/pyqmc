@@ -102,7 +102,6 @@ class hf_exp_fitting(object):
     E0 = y3
     c = -log(D23 / D13) / (x2 - x1)
     b = exp(c * x2) * (y2 - E0)
-    print E0, b, c
     return (E0, b, c)
   def extrap(self, x, y):
     """Main function for basis extrapolation.
