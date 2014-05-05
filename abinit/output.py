@@ -104,7 +104,7 @@ class abinit_dataset(result_base):
   def parse_dataset_results_(self, baserec, F, index):
     """Parses a dataset: the `result' part.
     The """
-
+    global DEBUG_FD
     scf_cycle = []
     rx = self.rx_
     dt = self.dt_
@@ -273,6 +273,10 @@ class abinit_dataset(result_base):
 
       else:
         pass
+
+    # Fallback: if no SCF output exists, most likely it is not a SCF run.
+    if not 'scf' in self:
+      self['scf'] = False
 
   @property
   def parent(self):
