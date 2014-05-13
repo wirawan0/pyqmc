@@ -35,11 +35,14 @@ from pyqmc.sites import str_grep
 
 # Standard information variables
 site_code = 'pmn'
-_site_hostname_sha1 = 'f1e7e1de72c137f5e286567137f2c9af5fc92964'
+_site_hostnames_sha1 = [
+  '10fe1b1d2a89fa3587b142b3722c5eef73231a2e',
+  'f1e7e1de72c137f5e286567137f2c9af5fc92964',
+]
 
 
 def _detect_site():
-  if str_grep(_site_hostname_sha1, pyqmc.sites._etc_hosts_ipv4hosts_digest):
+  if pyqmc.sites._hostgrep(_site_hostnames_sha1):
     return True
   else:
     return False
