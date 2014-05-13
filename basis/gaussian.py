@@ -338,6 +338,7 @@ def convert_BSE_basis(fname, outfname):
   In = text_input(fname)
   In.skip_blank_lines = False
 
+  auto_open = False
   if outfname == str:
     class outwriter:
       def __init__(self):
@@ -349,8 +350,11 @@ def convert_BSE_basis(fname, outfname):
       def __str__(self):
         return "".join(self.r)
     out = outwriter()
-  else:
+  elif isinstance(outfname, basestring):
     out = open(outfname, "w")
+    auto_open = True
+  else:
+    out = outfname
 
   out.writelines(["# Converted automatically using pyqmc.basis.gaussian.convert_BSE_basis\n",
                   "# Source file: %s\n" % fname,
@@ -365,6 +369,11 @@ def convert_BSE_basis(fname, outfname):
 
   ended = 0
   for spec in In:
+    s = spec.strip()
+    if len(s) == 0 or s[0] in ("!", "#"):
+      spec = spec.replace("!", "#", 1)
+      out.writelines([ spec, "\n"])
+      continue
     atom = get_atom(spec)
     out.writelines(["Spec: ", atom.symb, "\n"])
     for bas in In:
@@ -382,3 +391,5 @@ def convert_BSE_basis(fname, outfname):
 
   if (outfname == str):
     return str(out)
+  elif auto_open:
+    out.close()
