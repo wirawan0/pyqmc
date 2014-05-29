@@ -47,7 +47,10 @@ class OneBodyGms(object):
       self.read(src)
 
   def read(self, infile):
+    from os.path import abspath
     F = text_input(infile)
+    self.filename = infile
+    self.filename_abs = abspath(infile)
     r = F.next_rec()
     self.nbasis = int(r[0])
     self.nelem = int(r[1])
@@ -187,6 +190,7 @@ class TwoBodyGmsUfmt(object):
       Hamiltonian with real basis functions in real space
     """
     from numpy import conj
+    from os.path import abspath
     assert nbasis > 0
     try:
       perm = self.V2b_permutation_options[perm]
@@ -204,6 +208,8 @@ class TwoBodyGmsUfmt(object):
     dbg("File %s: %d integral records to be read\n" % (infile, rec_count))
     dbg("Matrix element permutation flag = %s\n" % (perm))
     F = open(infile, "rb")
+    self.filename = infile
+    self.filename_abs = abspath(infile)
     # We use blocked read and assignment to minimize the python overhead
     for iblk in xrange(0, rec_count, blksize):
       read_blksize = min(blksize, rec_count - iblk)
@@ -320,10 +326,13 @@ class EigenGms(object): #{
     BE WARNED: the parser is very primitive.
     It's not intended to be foolproof or flexible.
     '''
+    from os.path import abspath
     if hasattr(infile, "next"):
       self_open = False
     elif isinstance(infile, basestring): # if a string, let's open the file
       if verbose: print "Reading eigen_gms from file " + infile
+      self.filename = infile
+      self.filename_abs = abspath(infile)
       infile = open(infile, "r")
       self_open = True
     else:
