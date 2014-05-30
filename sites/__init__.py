@@ -203,12 +203,14 @@ class site_config_base(object):
       GAMESS_CALC_ROOT = os.path.join(self.GAFQMC, 'gamess'),
       NWCHEM_CALC_ROOT = os.path.join(self.GAFQMC, 'nwchem'),
       GAUSSIAN_CALC_ROOT = os.path.join(self.GAFQMC, 'gaussian'),
+      GAFQMC_BIG_ROOT = self.GAFQMC, # fallback
     )
   def init_pwqmc(self):
     self._defattr(PWQMC77 = os.environ['PWQMC77'])
     self._defattr( \
       PWQMC_CALC_ROOT = self.PWQMC77,
       ABINIT_CALC_ROOT = os.path.join(self.PWQMC77, 'abinit'),
+      PWQMC_BIG_ROOT = self.PWQMC77, # fallback
     )
 
 
