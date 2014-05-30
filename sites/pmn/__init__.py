@@ -63,6 +63,23 @@ class site_config(pyqmc.sites.site_config_base):
     self._defattr('SCR1_ROOT', pathcat('/scr1', self.USER))
     self._defattr('SCR2_ROOT', pathcat('/scr2', self.USER))
     self._defattr('LUSTRE_ROOT', pathcat('/mnt/lustre', self.USER))
+  def init_gafqmc(self):
+    pathcat = os.path.join
+    self.init_pmn_dirs()
+    self._defattr( \
+      GAFQMC_BIG_ROOT = pathcat(self.LUSTRE_ROOT, "BIGFILES.runtime/GAFQMC"),
+      NWCHEM_BIG_ROOT = pathcat(self.LUSTRE_ROOT, "BIGFILES.runtime/GAFQMC/nwchem"),
+      GAMESS_BIG_ROOT = pathcat(self.LUSTRE_ROOT, "BIGFILES.runtime/GAFQMC/gamess"),
+      GAUSSIAN_BIG_ROOT = pathcat(self.LUSTRE_ROOT, "BIGFILES.runtime/GAFQMC/gaussian"),
+    )
+    super(site_config, self).init_gafqmc()
+  def init_pwqmc(self):
+    pathcat = os.path.join
+    self.init_pmn_dirs()
+    self._defattr( \
+      PWQMC_BIG_ROOT = pathcat(self.LUSTRE_ROOT, "BIGFILES.runtime/PWQMC-77"),
+    )
+    super(site_config, self).init_pwqmc()
 
 def getusername():
   return os.environ['USER']
