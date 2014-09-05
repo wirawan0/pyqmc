@@ -191,10 +191,13 @@ class gafqmc_info(result_base):
     for_D2E = lambda s : s.replace("D","E").replace("d","e")
     EOS = re.compile(r"^\s*Final Results:\s*$")  # end-of-stream marker
     RS = re.compile(r"^\s*-+\s*$")  # record separator
+    # Special handling in case the parsing was stalled by "BugStop" output
+    BUGSTOP = regex(r"^\s*BugStop\s*:\s*(?P<msg1>.*)")
 
     meas = []
     for L in info_file:
-      Ls = for_D2E(L.strip())
+      Ls_orig = L.strip()
+      Ls = for_D2E(Ls_orig)
       flds = Ls.split()
       if EOS.search(Ls):
         break   # end-of-stream detected
@@ -207,13 +210,21 @@ class gafqmc_info(result_base):
             "Invalid format in GAFQMC measurement text (INFO)"
         flds.append(flds2[0])
       elif len(flds) < 4:
-        raise PyqmcParseError, \
-          "Invalid format in GAFQMC measurement text (INFO)"
+        if BUGSTOP % Ls_orig:
+          self.store_bug_info0(rslt, info_file, BUGSTOP['msg1'])
+          break
+        else:
+          raise PyqmcParseError, \
+            "Invalid format in GAFQMC measurement text (INFO)"
       try:
         rec = tuple(map((lambda x: float(x.rstrip(','))), flds[:4]))
       except:
-        raise PyqmcParseError, \
-          "Error parsing GAFQMC measurement text (INFO)"
+        if BUGSTOP % Ls_orig:
+          self.store_bug_info0(rslt, info_file, BUGSTOP['msg1'])
+          break
+        else:
+          raise PyqmcParseError, \
+            "Error parsing GAFQMC measurement text (INFO)"
       meas.append(rec)
 
       self.locate_text_marker(info_file,
@@ -223,11 +234,25 @@ class gafqmc_info(result_base):
     dtype = self.meas_dtype
     rslt["meas_energy"] = numpy.array(meas, dtype=dtype)
 
+  def store_bug_info0(self, rslt, info_file, msg1):
+    """Mark the run as buggy (by the existence of BUGSTOP field).
+    msg1 is the text that follows the `BugStop:' printout.
+    Caveat: the second line message may or may not be right, but hopefully
+    it can give us a clue on what's happening."""
+    rslt['BUGSTOP'] = True
+    try:
+      msg2 = info_file.next().strip()
+      msgs = (msg1, msg2)
+    except:
+      msgs = (msg1,)
+    rslt['BUGSTOP_msgs'] = msgs
+
+
   parse_file_ = parse_INFO
 
 
 def is_gafqmc_info(filename):
-  """Detects whether a file is
+  """Detects whether a file is a GAFQMC info file.
   """
   # TODO: This is a placeholder routine (API) for what could be more advanced
   # in the future.
