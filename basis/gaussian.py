@@ -397,3 +397,41 @@ def convert_BSE_basis(fname, outfname):
     return str(out)
   elif auto_open:
     out.close()
+
+
+def truncate_ANO_basis(bas, comp, debug=0):
+  """Peels the outer 'onion' of an ANO (or ANO-like) basis to obtain
+  a shorter/more compact basis.
+
+  Arguments:
+  * bas (input/output): the GTOBasis object to be shortened.
+  * comp: a dict containing how many functions to keep for
+    each angular momentum channel. The key is the angular momentum symbol
+    ('s', 'p', etc) and the value is the number of functions to keep (max).
+
+  NOTES:
+  * The order of the original basis is important, since we only peel from the
+    outside without considering other criteria.
+  * This operation is applied in-place; if you do not want to clobber
+    the original object, then create its deepcopy() before calling
+    this subroutine.
+  """
+  global function_types
+  count_func = dict((k.upper(), 0) for k in function_types)
+  composition = dict((k.upper(), comp.get(k, comp.get(k.lower(), 0))) for k in function_types)
+  if debug:
+    print "truncate_ANO_basis:"
+    print "  initial count_func       = ", count_func
+    print "  target composition       = ", composition
+    print "  old function composition = ", bas.func_summary()
+  new_funcs = []
+  for f in bas.funcs:
+    ftype = f[0].upper()
+    count_func[ftype] += 1
+    if count_func[ftype] <= composition[ftype]:
+      new_funcs.append(f)
+  bas.funcs = new_funcs
+  if debug:
+    print "  new function composition = ", bas.func_summary()
+  return bas
+
