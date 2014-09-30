@@ -37,6 +37,10 @@ from wpylib.sugar import ifelse, list_join
 # TODO: GlobalPrecisionControl object which controls the precision
 #
 
+# function_types = supported function types in this module.
+# L is special--for Pople's SP-type function
+function_types = ['S', 'P', 'D', 'F', 'G', 'H', 'I', 'L']
+
 class GTOBasis(object):
   """
   Gaussian-type orbital basis.

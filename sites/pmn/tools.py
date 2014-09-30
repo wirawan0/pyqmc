@@ -88,6 +88,7 @@ def fetch_gafqmc_run_output(rundirs, force_update=False, save_walkers=False):
     'INFO',
     'stdout',
     'fort.17',
+    'gafqmc-00000.stat',
     'fort.15',
     '*.in',
   ]
