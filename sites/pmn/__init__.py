@@ -42,8 +42,21 @@ _site_hostnames_sha1 = [
 
 
 def _detect_site():
+  import re
+  from pyqmc.sites import _info
   if pyqmc.sites._hostgrep(_site_hostnames_sha1):
-    return True
+      # This alone used to be a good indicator of pmn,
+      # but not any more since the introduction of storm
+      # as part of W&M HPC system.
+      #
+      # So we need to add several further checks:
+      # - Front-end check: against the FQDN
+      if _info.fqdn_sha1 in _site_hostnames_sha1:
+        return True
+      # - Compute-node check: against the literal domain name: "cNNN.local"
+      #   (FIXME: This is rather weak check; it maybe useful to think of another way)
+      elif re.search(r'^c[0-9]+\.local$', _info.hostname):
+        return True
   else:
     return False
 
