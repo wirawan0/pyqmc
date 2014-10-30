@@ -50,7 +50,7 @@ def get_gafqmc_run_snapshot(rundirs):
   print "Snapshot data is located in subdir: ", destbasedir
   # This is the standard location for rundir on local scratch as
   # defined by run-gafqmc.sh:
-  rundir_rx = regex(r'/state/partition1/' + getusername() + '/([0-9]+)\.([-_a-zA-Z0-9]+)\.run')
+  rundir_rx = regex(r'/state/partition1/' + getusername() + r'/([0-9]+)\.([-_a-zA-Z0-9]+)\.run')
   if isinstance(rundirs, basestring):
     rundirs = [rundirs]
   for (i, r) in enumerate(rundirs):
@@ -81,7 +81,7 @@ def fetch_gafqmc_run_output(rundirs, force_update=False, save_walkers=False):
   from wpylib.regexps import regex
   #destbasedir = tempfile.mkdtemp(dir=os.getcwd())
   #print "Snapshot data is located in subdir: ", destbasedir
-  rundir_rx = regex(r'/state/partition1/' + getusername() + '/([0-9]+)\.([-_a-zA-Z0-9]+)\.run')
+  rundir_rx = regex(r'/state/partition1/' + getusername() + r'/([0-9]+)\.([-_a-zA-Z0-9]+)\.run')
   if isinstance(rundirs, basestring):
     rundirs = [rundirs]
   files_to_fetch = [
