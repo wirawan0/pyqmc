@@ -82,6 +82,23 @@ class site_config(pyqmc.sites.site_config_base):
     self._defattr('SCR1_ROOT', pathcat(SCR1_ROOT, self.USER))
     self._defattr('SCR2_ROOT', pathcat(SCR2_ROOT, self.USER))
     self._defattr('BIGDATA_ROOT', pathcat(BIGDATA_ROOT, self.USER))
+  def init_gafqmc(self):
+    pathcat = os.path.join
+    self.init_storm_dirs()
+    self._defattr( \
+      GAFQMC_BIG_ROOT = pathcat(self.BIGDATA_ROOT, "BIGFILES.runtime/GAFQMC"),
+      NWCHEM_BIG_ROOT = pathcat(self.BIGDATA_ROOT, "BIGFILES.runtime/GAFQMC/nwchem"),
+      GAMESS_BIG_ROOT = pathcat(self.BIGDATA_ROOT, "BIGFILES.runtime/GAFQMC/gamess"),
+      GAUSSIAN_BIG_ROOT = pathcat(self.BIGDATA_ROOT, "BIGFILES.runtime/GAFQMC/gaussian"),
+    )
+    super(site_config, self).init_gafqmc()
+  def init_pwqmc(self):
+    pathcat = os.path.join
+    self.init_storm_dirs()
+    self._defattr( \
+      PWQMC_BIG_ROOT = pathcat(self.BIGDATA_ROOT, "BIGFILES.runtime/PWQMC-77"),
+    )
+    super(site_config, self).init_pwqmc()
 
 def getusername():
   """Override this function if needed (e.g. not running on the site)."""
