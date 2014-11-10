@@ -213,7 +213,7 @@ class gafqmc_info(result_base):
         rec = tuple(map((lambda x: float(x.rstrip(','))), flds[:4]))
       except:
         raise PyqmcParseError, \
-          "Error parsing GAFQMC measurement text (INFO)"
+          "Error parsing GAFQMC measurement text (INFO): "+str(Ls)
       meas.append(rec)
 
       self.locate_text_marker(info_file,
