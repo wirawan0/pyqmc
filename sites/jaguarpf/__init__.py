@@ -31,6 +31,7 @@ from pyqmc.sites import str_grep
 # Standard information variables
 site_code = 'jaguarpf'
 _site_hostnames_sha1 = [
+  'a7bc7025f1435dd0c5db55b75c276aed6ca97030',
   'aa9c409cfbc3d66e77bdcf5d8f6693b923bec76f',
   '532280b8b4297b4869c7d82f46f9c310f536a433',
 ]

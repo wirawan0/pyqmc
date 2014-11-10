@@ -1,0 +1,258 @@
+GAFQMC - Generic auxiliary-field quantum Monte Carlo
+This is GAFQMC code, version 1.099_MPI-git:0f34d30-wp
+$Id: GAFQMC_Mod.F90,v 1.11.4.25 2011-05-03 17:53:31 wirawan Exp $
+
+Authors:
+  Wissam Al-Saidi, Henry Krakauer, Fengjie Ma, Wirawan Purwanto, Shiwei Zhang
+  College of William and Mary, Virginia
+This version is maintained by Wirawan Purwanto and Fengjie Ma
+
+ Program was run on  2014/08/12 at 13:29:09
+ Host: titan-login6
+ 
+ Parallel version of GAFQMC, using NProc =  2048
+ 
+ Using OpenMP with number of threads =  2
+ 
+Files that are used in this run:
+Cr2_r8.0000.cc-pwCVTZ-DK.UHF.eqlb1_bw.dt01.r02cont.in
+INFO
+Cr2_r8.0000_UHF.cc-pwCVTZ-DK.01.fc-hf.eigen_gms
+ 
+Auxiliary output files:
+* walker files: /lustre/atlas/scratch/wirawan0/chm048/GAFQMC/2037467/wlk/gafqmc-NNNNN
+* input walker files: /lustre/atlas2/chm048/scratch/wirawan0/GAFQMC/2035046/wlk/gafqmc-NNNNN
+* stat files:   /lustre/atlas/scratch/wirawan0/chm048/GAFQMC/2037467/stat/gafqmc-NNNNN.stat
+* debug files:   /lustre/atlas/scratch/wirawan0/chm048/GAFQMC/2037467/dbg/gafqmc-NNNNN.dbg
+* energy measurement files: /lustre/atlas/scratch/wirawan0/chm048/GAFQMC/2037467/meas/gafqmc-NNNNN.ene
+ 
+ Number of particles: 2*14
+ 
+ load_balance_tol= 1.00000000000000004E-10
+ new_run= 2
+ 
+ setup: Warning: n_walker_files is not found in the input file
+ Setting n_walker_files to zero
+   popctl_scaling_method =  1
+   popctl_scaling_fac    =  0.97999999999999998
+ 
+ Random number generator: SPRNG
+ SPRNG seed:
+ sprng_type =  4
+ sprng_seed =  57197192
+ sprng_param1 =  0
+ Using computed anorm = exp(Etrial*deltau) =  63.332474876976697
+ deltau= 1.00000000000000002E-2
+ nblk= 1000     (# of blocks after relaxation)
+ neq= 0     (# of blocks for relaxation)
+ nblkstep= 10   (# of steps in each block)
+ beta= 0.10000000000000001  in each blk
+ 
+ nwlk=    3932          (expected avg # of walkers)
+ nwlkmax= 4096
+ nwlkmin= 3800
+ 
+input etrial=       414.8398228826 input anorm=        63.3324748770
+ 
+ etrial modified by growth estimator:
+ ngrth= 50   (# of blocks bt neq & nblk)
+ 
+ itv_em= 2      (e measurement intervals)
+ 
+ pop control intervals (in # of steps):
+      itv_pc_eq= 20   (eq & growth phase)
+      itv_pc= 41
+ modgs interval (in # of steps):  17
+ 
+ itest_find_exp_nh =  2
+      input nh_tol =  1.00000000000000002E-8
+      input nh     =  8
+ 
+ code was run 1  times
+ 
+ 
+ Majority and minority det are independent
+ both dets are propagated in RW 
+ if psiT is read in, both dets must be provided
+ in wf file with majority det followed by minority det
+ Using iflg_V2b_permute =  2
+ Using tol_V2b_egnval =  1.00000000000000002E-8
+ Using tol_sparse_mtx =  1.00000000000000002E-8
+ Using tol_V2b_rho_sym =  1.00000000000000002E-8
+init_wlkr_type=1: generated from distributing psiT dets by weight
+ nbasis =  194
+ when_measure=1: measuring energy after step
+ iflg_save_meas: energy measurements will be saved
+iflg_update_impfn=0
+iflg_update_impfn=0
+ itest_V2b_ortho=2: V2b orthogonalization via dgemm
+ itest_V2b_source=202: Reading only Cholesky-decomposed vectors from in AO basis
+ --This also enables the following option--
+ iflg_V2b_decomp=202: using Cholesky-decomposed V2b in AO basis (no V4bb reconstitution)
+ Eloc_routine=0: Wissam sparse implementation
+ itest_matmul= 0
+ itest_Calc_HSop= 100
+ itest_Calc_FB= 1
+ itest_rand_orbitals= 0
+ =====================================
+   Gamess input type  Calculations
+ =====================================
+ Energy_N_QMC -1913.4977477740599
+ 
+ iflg_bootstrap=2: using bootstrap data from gafqmc-bootstrap.bstp
+ Eloc_routine=0: Wissam sparse implementation (forced)
+Using multidet_type = 0
+get_psit: Legacy single-determinant case
+get_psit: Done reading trial WF
+ iflg_constraint=1: cosine phaseless projection
+ iflg_V2b_formatted = 0: Unformatted two body input file.
+ LoadBalance_init: NProc =  2048
+ omp_par: in-walker parallelization chosen =     1
+timing: Setup =         1.4351 wallsecs =>         2.7242 cpusecs
+ init_comm_mpi_1: Broadcasting variables to slave nodes...
+ init_comm_mpi_1: Successfully broadcasting all the variables...
+t_marker: fast_prep_bootstrap at        1.5058 wallsecs =>         2.7962 cpusecs
+ Bootstrapping calculation; precalculated data generated from: Cr2_r8.0000.cc-pwCVTZ-DK.UHF.bootstrap.in
+ Bootstrap format version:  2
+ Notice: Bootstrapping overrides the psiT data from the input file.
+ bootstrap: npsitdet =  1
+ bootstrap: multidet_ampl =
+   (1.,0.)
+ bootstrap: tol_sparse_mtx = 0.10000E-12
+ bootstrap: tol_V2b_egnval = 0.10000E-07
+ bootstrap: Energy_N_QMC = -1913.4977477740599
+itest_Calc_FB=1: Using sparse Calc_FB_sparse1
+timing: Bootstrap reading =        16.5579 wallsecs =>        31.4940 cpusecs
+t_marker: entering QMC main block at       18.0638 wallsecs =>        34.2901 cpusecs
+ Determine the value of nh based on psiT.
+ Dynamic nh based on psiT
+#  nh =    8 diff =    0.000000008
+ init_comm_mpi_2: Broadcasting variables to slave nodes...
+ init_comm_mpi_2: Successfully broadcasting all the variables...
+t_marker: Initial_population at       18.3244 wallsecs =>        34.7702 cpusecs
+timing: Calculation of psiT variational energy =         0.0596 wallsecs =>         0.1200 cpusecs
+   Variational energy =   -2099.2997391605772
+ 
+ ======================================================
+ ======================================================
+ Old results obtained using version 1.076
+ Number of old walker files  2048
+ day=2014/08/09
+ time=02:54:17
+ ======================================================
+ ======================================================
+ read_file: new_run==2: Discarding the following data from the old walker file:
+  lran    =  4*0
+  nblktot =  2000
+  uptot   =  -9622684652.9851685
+  downtot =  51505409.451072529
+  srun    =  -373657.17876686278
+  s2run   =  69809844.29166773
+ read_file: new_run==2: Discarding the following data from the old walker file:
+  version_chkpt =  2.
+  nh        =  8
+  anorm     =  0.15584252255786846
+  etrial    =  -185.89092523742792
+  istpacc   =  20000
+  timeshift =  200.
+timing: Initial_population =         0.3435 wallsecs =>         0.6800 cpusecs
+t_marker: Equilibration_phase at       18.7278 wallsecs =>        35.5702 cpusecs
+timing: Equilibration phase =         0.0000 wallsecs =>         0.0000 cpusecs
+t_marker: Growth_phase at       18.7286 wallsecs =>        35.5702 cpusecs
+ Growth phase...
+ Growth step: anorm and etrial       51.8603108199      394.8398228826
+ Growth step: anorm and etrial       51.9536474507      394.8398228826
+ Growth step: anorm and etrial       51.9837248664      394.8398228826
+ Growth step: anorm and etrial       52.0008184228      394.8398228826
+ Growth step: anorm and etrial       52.0108363824      394.8398228826
+ Growth step: anorm and etrial       52.0188343484      394.8398228826
+ Growth step: anorm and etrial       52.0225952376      394.8398228826
+ Growth step: anorm and etrial       52.0247300213      394.8398228826
+ Growth step: anorm and etrial       52.0263722644      394.8398228826
+ Growth step: anorm and etrial       52.0283545505      394.8398228826
+ Growth step: anorm and etrial       52.0295820659      394.8398228826
+ Growth step: anorm and etrial       52.0313779025      394.8398228826
+ Growth step: anorm and etrial       52.0317571830      394.8398228826
+ Growth step: anorm and etrial       52.0324263186      394.8398228826
+ Growth step: anorm and etrial       52.0326189781      394.8398228826
+ Growth step: anorm and etrial       52.0330052190      394.8398228826
+ Growth step: anorm and etrial       52.0331875999      394.8398228826
+ Growth step: anorm and etrial       52.0332454511      394.8398228826
+ Growth step: anorm and etrial       52.0333640364      394.8398228826
+ Growth step: anorm and etrial       52.0337832009      394.8398228826
+ Growth step: anorm and etrial       52.0341374098      394.8398228826
+ Growth step: anorm and etrial       52.0339841241      394.8398228826
+ Growth step: anorm and etrial       52.0339863916      394.8398228826
+ Growth step: anorm and etrial       52.0346370291      394.8398228826
+ Growth step: anorm and etrial       52.0353376513      394.8398228826
+ 
+ Correction fac to multiplicity, by growth est: 0.82162173122622084
+ 
+ Corresponding correction in Etrial: -19.647517083172275
+ 
+ Multiplicity factor: anorm= 52.035337651262729
+ New etrial to be used in El_bound: etrial= 394.83982288264599
+ 
+timing: Growth phase =       174.0003 wallsecs =>       332.8288 cpusecs
+ 
+ Measurement  phase...............
+ 
+t_marker: Measurement phase at      192.7293 wallsecs =>       368.3990 cpusecs
+ Output:
+ 0.10000000000000001,  81668.038116841199,  -1538.657924891414,  374.83982288264599
+ 
+ Total number of walkers propogated                          38380
+ Total number of negative weight walkers (percentage)        31  (  0%)
+ Total number of walkers with large phase (percentage)       10  (  0%)
+ Number of times the weight was increased                        0
+ Number of times the weight was decreased                        0
+ Number of times the local energy was too large                  0
+ Number of times the local energy was too small              38339
+ Number of times the weight was capped                           0
+ Average cosine projection  <cos(theta)>                   0.995614 +/-  0.020033
+ -------------------------------------------
+ 0.20000000000000001,  602610.44310716342,  -1538.6579248914138,  374.83982288264605
+   E= -1538.6579248914138   with error 5.39479660939443644E-6
+   u d ave 256494824.70441192,  684278.48122400464,  -1538.657924891414
+ 
+ Total number of walkers propogated                          38380
+ Total number of negative weight walkers (percentage)       144  (  0%)
+ Total number of walkers with large phase (percentage)       11  (  0%)
+ Number of times the weight was increased                        0
+ Number of times the weight was decreased                        0
+ Number of times the local energy was too large                  0
+ Number of times the local energy was too small              38225
+ Number of times the weight was capped                           0
+ Average cosine projection  <cos(theta)>                   0.995675 +/-  0.019473
+ -------------------------------------------
+ 0.30000000000000004,  4445924.6421331652,  -1538.6579248914138,  374.8398228826461
+   E= -1538.6579248914138   with error 3.93735437328511062E-6
+   u d ave 1923004430.1111994,  5130203.1233571693,  -1538.6579248914138
+ 
+ Total number of walkers propogated                          38380
+ Total number of negative weight walkers (percentage)       265  (  0%)
+ Total number of walkers with large phase (percentage)       19  (  0%)
+ Number of times the weight was increased                        0
+ Number of times the weight was decreased                        0
+ Number of times the local energy was too large                  0
+ Number of times the local energy was too small              38096
+ Number of times the weight was capped                           0
+ Average cosine projection  <cos(theta)>                   0.995361 +/-  0.020974
+ -------------------------------------------
+ 0.40000000000000002,  28291274.665133473,  -1538.657924891414,  374.83982288264599
+   E= -1538.657924891414   with error 3.11468727465715803E-6
+   u d ave 12527700814.714119,  33421477.788490642,  -1538.657924891414
+ 
+ Total number of walkers propogated                          38380
+ Total number of negative weight walkers (percentage)       447  (  1%)
+ Total number of walkers with large phase (percentage)        9  (  0%)
+ Number of times the weight was increased                        0
+ Number of times the weight was decreased                        0
+ Number of times the local energy was too large                  0
+ Number of times the local energy was too small              37924
+ Number of times the weight was capped                        7280
+ Average cosine projection  <cos(theta)>                   0.995329 +/-  0.021750
+ -------------------------------------------
+BugStop: In subroutine popctl_scaling:
+icount exceeded
+See debug file of proc            0 for detail
