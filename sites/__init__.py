@@ -25,6 +25,7 @@ _sites_supported = [
   'pmn',
   'avocado',
   'sciclone',
+  'storm',
 # Private sites
   'wirawan0',
   'orbital',
@@ -79,6 +80,25 @@ def getlogin():
   except:
     raise RuntimeError, "Failure getting user login info."
 
+
+class host_info(object):
+  """A class to query information on a certain host.
+  """
+  def __init__(self):
+    """Default constructor, which returns the information on host names
+    (and later: IP, etc) of the current host.
+    """
+    from socket import gethostname, getfqdn
+    self.hostname = gethostname()
+    self.fqdn = getfqdn()
+    # in case some domain qualifier exists:
+    self.hostshortname = self.hostname.split(".", 1)[0]
+    # encrypt into sha1digest form for comparisons:
+    self.hostname_sha1 = sha1digest(self.hostname)
+    self.fqdn_sha1 = sha1digest(self.fqdn)
+    self.hostshortname_sha1 = sha1digest(self.hostshortname)
+
+
 def _init_sites():
   """Initializes this module. Generally only needs to be called once."""
   # These variables store the contents of /etc/hosts
@@ -89,6 +109,7 @@ def _init_sites():
   global _etc_hosts_rec
   global _etc_hosts_ipv4hosts_digest
   global _etc_hosts_ipv4hosts_digest2
+  global _info
   strip_comments = lambda S : S.split("#",1)[0].strip()
   _etc_hosts = []
   _etc_hosts_rec = []
@@ -109,6 +130,7 @@ def _init_sites():
     _etc_hosts_ipv4hosts_digest2 = dict([ (d,1) for d in _etc_hosts_ipv4hosts_digest ])
   except:
     pass
+  _info = host_info()
 
 def _hostgrep(hosts):
   """Look for a bunch of host names (given as their SHA1 digest) and
