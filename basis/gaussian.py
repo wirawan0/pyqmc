@@ -224,6 +224,16 @@ class GTOBasis(object):
           for (typ, desc) in self.funcs
       ])
 
+  def output_pyscf(self):
+    """Returns a python object that's suitable to feed to pyscf
+    code (https://github.com/sunqm/pyscf).
+    """
+    global function_types
+    lmap = dict((v,k) for (k,v) in enumerate(function_types) if v != 'L')
+    lmap2 = dict((v.lower(),k) for (k,v) in enumerate(function_types) if v != 'L' and v != 'l')
+    lmap.update(lmap2)
+    return [ [lmap[f[0]]] + list(f[1]) for f in self.funcs ]
+
   def func_summary(self):
     """Gives a summary of the basis function, such as `9s8p5d1f'."""
     funcnames = 'SPDFGHI'
