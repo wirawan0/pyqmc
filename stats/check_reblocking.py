@@ -449,3 +449,36 @@ def reblock_sizes(ndata, nblksizes=50, minrblks=20):
   blks = numpy.exp(numpy.linspace(0, numpy.log(maxblksize), nblksizes))
   return make_sorted_unique_int(blks)
 
+
+def compute_reblock_stats_std(reblk_rec):
+  """Given the saved reblocking record from, e.g., either weighted_samples.reblock
+  or weighted_samples.reblock_p routine, compute the statistics of the
+  reblocked data (mean, standard deviation, variance, mean error estimate).
+
+  This routine gives standard (unweighted) statistics.
+  """
+  rec = reblk_rec
+  rec['mean'] = average(rec.reblk_X)
+  rec['std'] = std(rec.reblk_X, ddof=1)
+  rec['var'] = rec.std**2
+  rec['err'] = rec.std / sqrt(rec.reblk_nblk)
+  return rec
+
+
+def compute_reblock_stats_weighted(reblk_rec):
+  """Given the saved reblocking record from, e.g., either weighted_samples.reblock
+  or weighted_samples.reblock_p routine, compute the statistics of the
+  reblocked data (mean, standard deviation, variance, mean error estimate).
+
+  This routine gives weighted statistics according to the definition
+  shown in the following references:
+
+  - http://en.wikipedia.org/wiki/Weighted_arithmetic_mean#Weighted_sample_variance
+  """
+  rec = reblk_rec
+  rec['mean'] = average(rec.reblk_X)
+  rec['std'] = std(rec.reblk_X, ddof=1)
+  rec['var'] = rec.std**2
+  rec['err'] = rec.std / sqrt(rec.reblk_nblk)
+  return rec
+
