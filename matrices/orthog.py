@@ -20,6 +20,7 @@ import numpy
 from numpy import sqrt
 from numpy import diag, dot
 from numpy.linalg import eigh
+from wpylib.math.linalg.gram_schmidt import modgs
 
 matmul = numpy.dot
 
