@@ -114,7 +114,7 @@ class wlk_gafqmc(object):
       nptot = self.nup
 
     if verbose >= 20:
-      w("# Walker data: ampl, phasefac, re(El), im(El)\n")
+      w("# Walker data: wtwlkr, phasefac, re(El), im(El)\n")
 
     pop = MultiDet()
     pop.dets = []
@@ -149,20 +149,28 @@ class wlk_gafqmc(object):
         assert rec.nwlkr_proc_1 == rec.nwlkr_proc
         F.read(('impfn', Complex, (rec.nwlkr_proc_1,)), dest=rec)
         # todo: affix impfn to Det objects above
+        # NOTE: if you use read_all() method instead, these values
+        # would have been affixed there!
 
     return rec
 
 
   def read_all(self, procs, fname_pattern='wlk/gafqmc-%(rank)05d',
-               verbose=0, output=sys.stdout, indep_rng=1):
+               verbose=0, output=sys.stdout, indep_rng=1, fname_args={}):
     """Reads all walker files into a single big result record.
-    procs is the number of all processes to read, or a list/tuple/array
-    of ranks from which we want to read the walkers.
+    The `procs` argument can be one of the following:
+    - an integer > 0, which is the number of MPI processes
+      (for parallel run), indicating that all the walker files woud
+      be read
+    - a list/tuple/array of process ranks, from which associated
+      checkpoint files we want to read in the walkers.
 
     By default, we assume that all the walker files reside in a subdir
     called "wlk/" .
     """
     from wpylib.sugar import is_iterable
+    from pyqmc import PyqmcDataError
+    from itertools import izip
 
     if verbose:
       w = text_output(output, flush=True)
@@ -176,17 +184,24 @@ class wlk_gafqmc(object):
 
     w("read_all: Reading from %d checkpoint files\n" % len(ranks))
     dest = None
+    impfn_all = []
+    has_impfn = None
     for rank in ranks:
-      filename = fname_pattern % (dict(rank=rank))
+      filename = fname_pattern % (dict(fname_args, rank=rank))
       chk = self.read(src=filename, verbose=verbose, output=w,
                       rank=rank, indep_rng=indep_rng)
+      # don't leave the `data` field, or else it will confuse user later.
+      # Use `data_all` instead!
+      del self.data
       if dest is None:
         dest = chk
+        self.data_all = chk
         dest.NUM_WARNINGS = 0
         dest.ranks = [ rank ]
         dest.lran_proc = { rank : dest.lran }
         del dest.lran
         dest.wlkrs_proc = { rank : dest.wlkrs }
+        has_impfn = hasattr(chk, 'impfn')
       else:
         dest.ranks.append(rank)
         # Do some sanity checks and issues warning irregular stuff.
@@ -205,5 +220,21 @@ class wlk_gafqmc(object):
         dest.lran_proc[rank] = chk.lran
         dest.wlkrs_proc[rank] = chk.wlkrs
         dest.wlkrs.dets.extend(chk.wlkrs.dets)
+
+        if has_impfn != hasattr(chk, 'impfn'):
+          raise PyqmcDataError, \
+            (("Inconsistent existence of impfn field across walker files " \
+              " (currently on rank #%s; first-rank impfn status was %s)") \
+             % rank)
+
+      if has_impfn:
+        impfn_all.append(chk.impfn)
+
+    # Final brush-up:
+    if has_impfn:
+      dest.impfn = numpy.concatenate(impfn_all)
+      # Affix impfn to D
+      for (impfn, D) in izip(dest.impfn, dest.wlkrs):
+        D.impfn = impfn
 
     return dest
