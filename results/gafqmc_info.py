@@ -70,6 +70,13 @@ class gafqmc_info(result_base):
       flds = Ls.split()
       if len(flds) == 0:
         continue
+      elif Ls.startswith("Number of particles:"):
+        rslt["nup"] = int(flds[3])
+        rslt["ndn"] = int(flds[4])
+      elif Ls.startswith("Majority and minority det are independent"):
+        rslt["udet"] = True
+      elif Ls.startswith("Majority and minority det are coupled"):
+        rslt["udet"] = False
       elif flds[0] == "Variational":
         if flds[1] == "energy":
           rslt["Evar"] = float(flds[3])
