@@ -23,7 +23,7 @@ import os
 import numpy
 import numpy.linalg
 
-from numpy import asmatrix, empty, matrix, zeros_like
+from numpy import asarray, asmatrix, empty, matrix, zeros_like
 from numpy.linalg import eigh, inv
 
 import wpylib.math
@@ -430,6 +430,15 @@ class EigenGms(object): #{
       for orb in numpy.array(SS,copy=False).T:
         out("\n".join([ "%.15g" % a for a in orb ] + ["\n"]))
 
+  @classmethod
+  def from_mo(cls, alpha, beta=None, copy=True):
+    from numpy import array
+    g = cls()
+    g.alpha = array(alpha, copy=copy)
+    if beta is not None:
+      g.beta = array(beta, copy=copy)
+      assert g.alpha.shape[0] == g.beta.shape[0]
+    return g
 
 
 class Fort70(object): #{
