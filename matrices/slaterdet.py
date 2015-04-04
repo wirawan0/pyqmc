@@ -38,10 +38,14 @@ class Det(object):
     self.up = asmatrix(array(src_up,order='C'))
     if (src_dn != None):
       self.dn = asmatrix(array(src_dn,order='C'))
+      self.udet = True
     elif (ndn != None):
+      assert ndn <= self.up.shape[1]
       self.dn = self.up[:, 0:ndn]
+      self.udet = False
     else:
       self.dn = self.up
+      self.udet = False
     if (self.up.shape[0] != self.dn.shape[0]):
       raise ValueError("Det: mismatch number of basis funcs for up and down dets")
   def nup(self):
@@ -63,6 +67,29 @@ class Det(object):
   def beta_set(self, x):
     self.dn = x
   beta = property(beta_get, beta_set, doc="Beta spin sector")
+
+  def normalize_det(self):
+    """Normalizes the Slater determinant matrix.
+    Returns the original Slater determinant self-overlap.
+    """
+    from wpylib.math.linalg import modgs
+    from numpy import product
+
+    # treat everything like udet case only
+    # should not be harmful other then space/time efficiency waste
+    up_det, self.up_orb_norms = modgs(self.up)
+    dn_det, self.dn_orb_norms = modgs(self.dn)
+
+    self.up_det_norm = product(self.up_orb_norms)
+    self.dn_det_norm = product(self.dn_orb_norms)
+    self.det_norm = self.up_det_norm * self.dn_det_norm
+    self.ampl = getattr(self, 'ampl', 1.0) * self.det_norm
+    # Replace the matrix values *in place*
+    self.up[:,:] = up_det
+    if self.udet:
+      self.dn[:,:] = dn_det
+
+
 
 class MultiDet(object):
   """Basic multi-Slater determinant object.
@@ -123,12 +150,28 @@ class MultiDet(object):
   def norm(self):
     return mdet_ovlp(self)
   def normalize(self, N = None):
+    """Normalizes the multideterminant wave function by adjusting the
+    amplitudes, so that
+
+       <dets|dets> = 1.0 .
+    """
     if (N != None):
       n = Abs(N)
     else:
       n = mdet_ovlp(self)
     self.norm_orig = n
-    for d in self.dets: d.ampl *= 1.0 / sqrt(n)
+    norm_const = 1.0 / sqrt(n)
+    for d in self.dets: d.ampl *= norm_const
+  def normalize_dets(self):
+    """Normalizes the individual determinants in the multideterminant
+    expansion so that for each determinant,
+
+       <det|det> = 1.0 .
+
+    """
+    for d in self.dets:
+      d.normalize_det()
+
   @property
   def ndets(self):
     return len(self.dets)

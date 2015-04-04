@@ -454,11 +454,12 @@ class Fort70(object): #{
     "S_eigen_vec" : "U",
     "H1" : "H1",
     "psiT_ampl" : "ampl",
+    "psiT_R_ampl" : "R_ampl",
     "MO_noise1_up": "noise_up",
     "MO_noise1_dn": "noise_dn",
   }
   matrix_complex = [
-    "psiT_ampl",
+    "psiT_ampl", "psiT_R_ampl",
   ]
 
   def __init__(self, fname = None, nup = None, ndn = None, verbose = None):
@@ -533,6 +534,24 @@ class Fort70(object): #{
                                     cplx=False, restricted=restricted,
                                     verbose=verbose)
             self.psiT_det.append(detmp)
+          elif (name.startswith("psiT_R_det_")):
+            # The psiT number must be in order (1..NPsiTDet) or else the
+            # code would read everything erroneously:
+            det_no = int(name[11:]) - 1
+            if (not hasattr(self, "psiT_R_det")): self.psiT_R_det = []
+            if (cols == nup + ndn):
+              restricted = False
+            elif (cols == max(nup,ndn)):
+              restricted = True
+            else:
+              raise PyqmcDataError, \
+                ("Invalid number of columns for WF matrix `%s' (%dx%d): " + \
+                "The valid ncols is either %d or %d") % \
+                (name, rows, cols, nup+ndn,nup)
+            detmp = read_det_matrix(inp, name, rows, nup, ndn,
+                                    cplx=False, restricted=restricted,
+                                    verbose=verbose)
+            self.psiT_R_det.append(detmp)
           else:
             raise PyqmcDataError, "Unknown matrix name: `" + name + "'"
         txt = inp.next()
