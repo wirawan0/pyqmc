@@ -234,9 +234,15 @@ class gafqmc_info(result_base):
             "Error parsing GAFQMC measurement text (INFO)"+str(Ls)
       meas.append(rec)
 
-      self.locate_text_marker(info_file,
-        (lambda S : RS.search(S)), max_try=20,
-        errmsg="Cannot locate a valid record separator in GAFQMC measurement text (INFO)")
+      try:
+        self.locate_text_marker(info_file,
+          (lambda S : RS.search(S)), max_try=20,
+          errmsg="Cannot locate a valid record separator in GAFQMC measurement text (INFO)")
+      except StopIteration:
+        from warnings import warn
+        info = self['info_file']
+        warn("StopIteration caught in file %s; stop scanning file." % (info,))
+        break
 
     dtype = self.meas_dtype
     rslt["meas_energy"] = numpy.array(meas, dtype=dtype)
