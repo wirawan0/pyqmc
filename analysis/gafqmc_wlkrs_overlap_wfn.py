@@ -39,6 +39,7 @@ class gafqmc_wlkrs_overlap_wfn(object):
   # defaults:
   chkfile_pattern = _chkfile_pattern_legacy
   chkfile_pattern_blk_suffix = _chkfile_pattern_blk_suffix
+
   def init(self, info, wlkr_dir, chkfile_pattern=None, logfile=sys.stdout):
     self._init_metadata(info)
     self.wlkr_dir = wlkr_dir
@@ -103,6 +104,25 @@ class gafqmc_wlkrs_overlap_wfn(object):
 
 
 
+def dets_compute_impfn(wlkrs, PsiT):
+  """Given a multideterminant wave function from QMC checkpoint
+  (i.e. a QMC random walker population), recalculate
+  the important function <PsiT|phi> for each determinant |phi>
+  in the population.
+
+  This step is needed when the importance function was not saved into the
+  checkpoint file.
+  """
+  from pyqmc.matrices.slaterdet import mdet_ovlp, Det, MultiDet
+  D1 = Det()
+  D1.ampl = 1.0
+  MD = MultiDet()
+  MD.dets = [D1]
+  for D in wlkrs.dets:
+    D1.up, D1.dn = D.up, D.dn
+    ovlp_PsiT_phi = mdet_ovlp(PsiT, MD)
+    D.impfn = ovlp_PsiT_phi
+
 
 def dets_assign_amplitudes(wlkrs):
   """Given a multideterminant wave function from QMC checkpoint,
@@ -123,6 +143,14 @@ def orthonormalize_dets(wlkrs):
 
   This is an experimental routine to be used in conjunction to a
   gafqmc_wlkrs_overlap_wfn object.
+
+  Note: for walker population in gafqmc_wlkrs_overlap_wfn object,
+  this functionality has been superseded by the .dets_normalize() method of
+  that class, provided that the amplitude (.ampl field of each walker)
+  has been assigned by calling the .dets_assign_amplitudes() method.
+
+  Thus this standalone function is somewhat obsolete; only call when
+  situation really warrants it.
   """
   from wpylib.math.linalg import modgs
   from numpy import product
@@ -153,6 +181,10 @@ def orthonormalize_dets(wlkrs):
 
 def load_fort70_wfn(chkdata, fort70file, verbose=10):
   """Loads a (multideterminant) wave function from fort.70 file.
+  This is necessary to get the wave function in the orthogonal basis.
+  Another alternative would be to reconstitute the X basis-orthogonalization
+  matrix from fort.70 and transform the wave function orbitals manually to the
+  orthogonal basis.
   """
   from numpy import zeros, eye, asmatrix
   from pyqmc.matrices.gms import Fort70
@@ -164,4 +196,95 @@ def load_fort70_wfn(chkdata, fort70file, verbose=10):
   PsiT.set_ampl(f70.ampl)
   return PsiT
 
+
+
+# The following routines are my bread-and-butter analysis tools, but they are not
+# necessarily most general as the rest of the library.
+
+
+def dets_calc_ovlp_with_PsiT1(wlkrs, psiT_det=None, psiT_kwd='PsiT'):
+  """Calculate the overlap between a multideterminant wfn and a
+  single-det wave function.
+  Records the individual overlap on each determinant object for subsequent
+  analysis."""
+  from pyqmc.matrices.slaterdet import up_ovlp, dn_ovlp
+  up_o_attr = 'up_%s_ovlp' % psiT_kwd
+  dn_o_attr = 'dn_%s_ovlp' % psiT_kwd
+  o_attr = '%s_ovlp' % psiT_kwd
+  tot_ovlp = 0
+  for D in wlkrs.dets:
+    up_o, dn_o = up_ovlp(psiT_det, D), dn_ovlp(psiT_det, D)
+    setattr(D, up_o_attr, up_o)
+    setattr(D, dn_o_attr, dn_o)
+    setattr(D, o_attr, up_o * dn_o)
+    tot_ovlp += up_o * dn_o * D.ampl
+  return tot_ovlp
+
+
+def dets_calc_ovlp_with_PsiT_multidet(wlkrs, PsiT_det=None, psiT_kwd='PsiT'):
+  """Calculate the overlap between a multideterminant wfn and a
+  multidet wave function.
+  Records the individual overlap on each determinant object for subsequent
+  analysis."""
+  from pyqmc.matrices.slaterdet import Det, Multidet, mdet_ovlp
+  o_attr = '%s_ovlp' % psiT_kwd
+  tot_ovlp = 0
+
+  # Creates a dummy multidet object to work with mdet_ovlp below.
+  D1 = Det()
+  D1.ampl = 1.0
+  MD = MultiDet()
+  MD.dets = [D1]
+  for D in wlkrs.dets:
+    D1.up, D1.dn = D.up, D.dn
+    ovlp_PsiT_phi = mdet_ovlp(PsiT, MD)
+    setattr(D, o_attr, ovlp_PsiT_phi)
+    tot_ovlp += ovlp_PsiT_phi * D.ampl
+  return tot_ovlp
+
+
+def dets_dump_stats(wlkrs, out=sys.stdout, psiT_kwd='PsiT'):
+  """Verbosely reports the statistics of the determinants (weight,
+  local energies, etc, and wave function overlap).
+  """
+  # In the development script elsewhere (Check_walkers.py),
+  # it was called 'report_status_dets'.
+  # But the layout has changed considerably.
+  from wpylib.iofmt.text_output import text_output
+  from wpylib.text_tools import str_fmt_heading
+  fmt = "%4d  %17.9g  %17.9g  | %17.9g %17.9g | %17.9g %17.9gj | %17.9g %17.9gj | %17.9g %17.9gj || %17.9g %17.9gj | %17.9g %17.9gj | %17.9g %17.9gj |\n"
+  fmt_heading = str_fmt_heading(fmt)
+  #xkwd = lambda X : X.replace('%', psiT_kwd)
+  heading = fmt_heading % ('no',
+                           'wtwlkr', 'phasefac', 'Elocal', '(imag)',
+                           'impfn', '(imag)',
+                           'det_norm', '(imag)',
+                           'ampl', '(imag)',
+                           '%s_ovlp' % psiT_kwd, '(imag)',
+                           'up_%s_ovlp' % psiT_kwd, '(imag)',
+                           'dn_%s_ovlp' % psiT_kwd, '(imag)',
+                          )
+  Print = text_output(out)
+  Print(heading)
+  for (i, D) in enumerate(wlkrs.dets):
+    impfn = getattr(D, 'impfn', 1e-99)
+    det_norm = getattr(D, 'det_norm', 1e-99)
+    ampl = getattr(D, 'ampl', 1e-99)
+    o = getattr(D, '%s_ovlp' % psiT_kwd, 1e-99)
+    up_o = getattr(D, 'up_%s_ovlp' % psiT_kwd, 1e-99)
+    dn_o = getattr(D, 'dn_%s_ovlp' % psiT_kwd, 1e-99)
+
+    Print(fmt \
+          % (i+1,
+             D.wtwlkr,
+             D.phasefac,
+             D.El.real, D.El.imag,
+             impfn.real, impfn.imag,
+             det_norm.real, det_norm.imag,
+             ampl.real, ampl.imag,
+             o.real, o.imag,
+             up_o.real, dn_o.imag,
+             dn_o.real, dn_o.imag,
+            )
+         )
 
