@@ -13,7 +13,25 @@
 """
 pyqmc.utils.cost
 
-AFQMC cost estimator and analyzer.
+AFQMC cost estimator and analyzer
+---------------------------------
+
+This module contains several classes useful for AFQMC cost calculation,
+both prior to and after calculations.
+
+* qmc_cost_estimator: A tool for estimating QMC run cost based on
+  given parameters and known step time (usually from a previous run).
+  It is recommended to use the "avg step time" from
+
+* real_qmc_cost: A tool to compute the actual QMC runtime cost based on
+  the timing info that can be obtained from the INFO file.
+
+
+Here are the lower-level classes, which are probably not of much interest
+for ordinary users:
+
+* Class cost_base provides convenient API for setting multiple attributes
+  into the object. This is the base class of qmc_cost_estimator.
 
 """
 
