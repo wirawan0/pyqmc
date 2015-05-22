@@ -79,13 +79,13 @@ def h5meas_reblk(meas_db, free_proj=False,
   def match_rows(m):
     row = m['row']
     return row >= match_params['start'] and row < match_params['stop'] \
-      and (match == None or match(m))
-      #and (minbeta == None or m['beta'] >= minbeta) \
-      #and (maxbeta == None or m['beta'] <= maxbeta)
+      and (match is None or match(m))
+      #and (minbeta is None or m['beta'] >= minbeta) \
+      #and (maxbeta is None or m['beta'] <= maxbeta)
   def match_block(m):
     blk = m['iblk']
     return blk == match_params['start'] \
-      and (match == None or match(m))
+      and (match is None or match(m))
 
   raw_dset = meas_db.raw
 
@@ -98,17 +98,17 @@ def h5meas_reblk(meas_db, free_proj=False,
   match_row_begin = None
   match_row_end = None
   meta = raw_dset.meta[:]
-  if match == None:
+  if match is None:
     match1 = lambda m : True
   else:
     match1 = match
 
   num_wlkrs = []
-  if stage == None:
+  if stage is None:
     dbg(100, "matching: route 3\n")
     for (irow,m) in enumerate(meta):
       if m['count'] > 0 and match1(m):
-        if match_row_begin == None: match_row_begin = irow
+        if match_row_begin is None: match_row_begin = irow
         match_row_end = irow
         nrows += 1
         num_wlkrs.append(m['count'])
@@ -116,7 +116,7 @@ def h5meas_reblk(meas_db, free_proj=False,
     dbg(100, "matching: route 4\n")
     for (irow,m) in enumerate(meta):
       if m['count'] > 0 and m['stage'] == stage and match1(m):
-        if match_row_begin == None: match_row_begin = irow
+        if match_row_begin is None: match_row_begin = irow
         match_row_end = irow
         nrows += 1
         num_wlkrs.append(m['count'])
@@ -126,7 +126,7 @@ def h5meas_reblk(meas_db, free_proj=False,
          % (num_wlkrs.min(), num_wlkrs.max(), num_wlkrs.mean(), num_wlkrs.std(ddof=1)))
   num_wlkrs_max = num_wlkrs.max()
 
-  if blksize == None:
+  if blksize is None:
     # this can be >= len of actual measurement data, but that's ok.
     blksize = nrows # raw_dset.row_count()
 
@@ -162,7 +162,7 @@ def h5meas_reblk(meas_db, free_proj=False,
 
   #Fsum = text_output(logfile("summary-reblocking.dat.txt"), flush=True)
 
-  if rng == None:
+  if rng is None:
     rng = numpy.random
 
   i = 0
@@ -226,7 +226,7 @@ def h5meas_reblk(meas_db, free_proj=False,
     if N_meas == 0:
       continue
 
-    if act_row_begin == None:
+    if act_row_begin is None:
       # note the first and ending rows
       act_row_begin = meas[0].meta['row']
     act_row_end = meas[-1].meta['row']
