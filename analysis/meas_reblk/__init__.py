@@ -15,4 +15,4 @@ experiments.
 
 """
 
-from _h5_meas_reblk import h5_meas_reblk as h5_energy_meas_reblk
+from .H5meas_reblk import h5meas_reblk as h5_energy_meas_reblk
