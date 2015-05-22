@@ -13,6 +13,13 @@ processed.
 
 """
 
+import numpy
+
+from wpylib.params import struct
+
+class meas_reblk_result(struct):
+  """A class to hold (total energy measurement) reblocking results.
+  """
 
 # Imported 20150522 from Cr2_analysis_cbs.py
 # (dated 20141017, CVS rev 1.143).
@@ -161,7 +168,7 @@ def h5meas_reblk(meas_db, free_proj=False,
   i = 0
   ws = weighted_samples()
   has_header = False
-  rslt = struct()
+  rslt = meas_reblk_result()
   rslt.raw_numrows = nrows
   rslt.pblkcounts = pblkcounts
   rslt.tblksizes = tblksizes
