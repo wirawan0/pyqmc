@@ -321,3 +321,65 @@ def h5meas_reblk(meas_db, free_proj=False,
 
   return rslt
 
+
+def h5meas_dump_reblk_raw_data(blk):
+  """Dumps the reblocked datasets in a text table format.
+  Used for debugging.
+
+  Input `blk' object is the output of h5meas_reblk routine.
+  """
+  from wpylib.iofmt.text_output import text_output
+  rawblk = blk.raw_blocks
+  for (pblk, tblk) in rawblk.keys():
+    fn = "dump-%dx%d" % (pblk, tblk)
+    fd = text_output(fn)
+    rblk = rawblk[pblk,tblk]
+    X = rblk['Xw'] / rblk['w']
+    w = rblk['w']
+    for t in xrange(rblk.shape[1]):
+      for p in xrange(rblk.shape[0]):
+        fd("%3d %3d %16.9f %16.9f\n" % (p, t, X[p,t], w[p,t]))
+
+    fd.close()
+
+
+def h5meas_dump_reblk_stats(blk, fn):
+  """Dumps the reblocking statistics in a text table format.
+  Input `blk' object is the output of h5meas_reblk routine.
+  """
+
+  from wpylib.iofmt.text_output import text_output
+  from wpylib.text_tools import str_fmt_heading
+  from wpylib.math.stats.jackknife1 import jk_generate_averages, jk_stats_aa
+  from numpy import average, product, std, sqrt, sum
+  rawblk = blk.raw_blocks
+  #fn = "reblock-stats"
+  fd = text_output(fn)
+  fmt = "%5d %6d %16.9f %16.9f  %16.9f %16.9f   %16.9f %4d   %16.9f %16.9f\n"
+  fd(str_fmt_heading(fmt) % ('#tblk', 'pblk', 'mean_g', 'err_g', 'mean_b', 'err_b', 'w_tot', 'tbsz', 'mean_jk', 'err_jk'))
+  for (pblk, tblk) in sorted(rawblk.keys()):
+    rblk = rawblk[pblk,tblk]
+    ndata = product(rblk.shape)
+    # reblocked "measurements":
+    X_ds = rblk['Xw'] / rblk['w']
+    wtot = sum(rblk['w'])
+    w2tot = sum(rblk['w']**2)
+    # grand (weighted) averages
+    Xg = sum(rblk['Xw']) / sum(rblk['w'])
+    # REF: http://en.wikipedia.org/wiki/Weighted_arithmetic_mean#Weighted_sample_variance
+    # biased sample variance
+    Xg_var_biased = sum(rblk['w'] * (X_ds - Xg)**2) / wtot
+    #Xg_var_unbiased =
+    Xg_err_biased = sqrt(Xg_var_biased / (ndata))
+    # poor but simplest attempt to reduce bias in var estimate above:
+    Xg_err_unbiased1 = sqrt(Xg_var_biased / (ndata-1))
+    # unweighted statistics: block average, standard error of the blk avg
+    Xb = average(X_ds)
+    Xerr = std(X_ds, ddof=1) / sqrt(ndata)
+    # Jackknife statistics
+    Emix_aa_jk = jk_generate_averages(a=X_ds.flatten(), weights=rblk['w'].flatten())
+    (Emix_jk, Emix_jk_err, Emix_jk_corrected) = jk_stats_aa(aa_jk=Emix_aa_jk)
+
+    fd(fmt % (rblk.shape[1], pblk, Xg, Xg_err_biased, \
+              Xb, Xerr, wtot, tblk, Emix_jk, Emix_jk_err))
+  fd.close()
