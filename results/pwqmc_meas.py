@@ -200,7 +200,7 @@ class raw_meas_data(object):
     if type(op) == tuple:
       global_op = op[1]
       op = op[0]
-    if global_op == None: global_op = batch_op.nop_global
+    if global_op is None: global_op = batch_op.nop_global
     for idx in ranges:
       tmp_rslt.append( op(self[idx]) )
     return global_op(tmp_rslt)
@@ -293,7 +293,7 @@ class raw_meas_hdf5(object):
 
   def check_alive(self):
     '''Checks if the parent object is still alive and valid.'''
-    if self.parent == None or self.parent() is None:
+    if self.parent is None or self.parent() is None:
       raise ReferenceError, \
           "The parent meas_hdf5 object has died or been closed"
 
@@ -501,7 +501,7 @@ class raw_meas_hdf5(object):
   def row_ndata(self, row=None):
     '''Queries the number of data points existing in a row.'''
     self.check_alive()
-    if row == None: row = self.row
+    if row is None: row = self.row
     return self.meta[row][3]
 
   def load_meas(self, blocks, indices, stage = 2):
@@ -682,7 +682,7 @@ class raw_meas_hdf5(object):
 
     src = self.get_raw_object(src)
 
-    if warn_meta_mismatch == None:
+    if warn_meta_mismatch is None:
       warn_meta_mismatch = sys.stdin.isatty()
 
     if debug >= 1:
@@ -897,7 +897,7 @@ class meas_hdf5(object):
     '''Opens an existing raw measurement section for work.
     This provides convenient shortcuts (E_l, wtwlkr, etc.) at the object
     instance level.'''
-    if path == None: path = self.default_raw_group
+    if path is None: path = self.default_raw_group
     g = self.dbh5[path]
     raw = raw_meas_hdf5(g, self)
     self.raw = raw  # last opened raw group
@@ -1075,7 +1075,7 @@ class meas_text(object):
         "Cannot seek section " + section + " block " \
         + str(block) + " index " + str(index)
 
-    if out == None:
+    if out is None:
       # Legacy data structure: using lists
       # This is deprecated; please use the numpy array buffer, which
       # is better!
@@ -1108,7 +1108,7 @@ class meas_text(object):
       else:
         E = float(flds[2]) + H0
 
-      if out == None:
+      if out is None:
         wtwlkr.append(w)
         E_l.append(E)
       else:
@@ -1458,7 +1458,7 @@ def convert_meas_to_hdf5_v2(output, H0=0, files=None, **opts):
   # If nwlkmax is not provided, we will have to estimate the nwlkmax:
   # This is not a safe or exact measurement, so nwlkmax better be provided.
   nwlk_proc = []
-  if nwlkmax == None:
+  if nwlkmax is None:
     debug_out.write("Warning: nwlkmax not given, we will estimate it.\n")
     mea_f.open(files[0])
     nwlkmax_proc = 0
@@ -1476,11 +1476,11 @@ def convert_meas_to_hdf5_v2(output, H0=0, files=None, **opts):
     dbg(1, "Estimating nwlkmax = %d\n" % (nwlkmax))
     del nrecs
 
-    if nwlkavg == None:
+    if nwlkavg is None:
       nwlkavg = int(numpy.mean(nwlk_proc) * numcpu)
       dbg(1, "Estimating nwlkavg = %d\n" % (nwlkavg))
   else:
-    if nwlkavg == None:
+    if nwlkavg is None:
       nwlkavg = nwlkmax # FIXME
 
   if isinstance(output, meas_hdf5_class):
@@ -1556,7 +1556,7 @@ def convert_meas_to_hdf5_v2(output, H0=0, files=None, **opts):
         # few records in an improperly terminated parallel run).
         if sect_info2 != None:
           # check sect_info2 against sect_info[iblkread]!
-          if sect_info.get(iblkread, None) == None:
+          if sect_info.get(iblkread, None) is None:
             sect_info[iblkread] = sect_info2
             sect_status[iblkread] = match(sect_info2, match_args)
           if sect_info[iblkread][0:3] != sect_info2[0:3]:
@@ -1676,7 +1676,7 @@ def meas_glob(files, ext="ene"):
   '''Do automatic globbing on files: the files can be either a list of filenames,
   a subdir containing *.ene files, or a glob string.'''
   from glob import glob
-  if files == None:
+  if files is None:
     files = sorted(glob("pwaf-*." + ext))
   elif isinstance(files, basestring):
     if os.path.isdir(files):
