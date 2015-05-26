@@ -1,10 +1,22 @@
+#!/usr/bin/env python
+#
+# pyqmc.analysis.meas_reblk.H5meas_reblk module
+#
 # Created: 20150522
 # Wirawan Purwanto
+#
+# Initial contents were imported 20150522 from Cr2_analysis_cbs.py
+# (dated 20141017, CVS rev 1.143).
+#
 
 
 """
 pyqmc.analysis.meas_reblk._h5_meas_reblk
 QMC energy measurement reblocking tools
+
+This is a more powerful and in-depth approach to post-runtime
+QMC errorbar analysis than the raw check_reblocking approach.
+
 
 Note:
 The dataset must have been converted to HDF5 archival format before
@@ -40,9 +52,40 @@ def h5meas_reblk(meas_db, free_proj=False,
                 ):
   """Analyze errorbar from hdf5 measurement record (for time-population
   combined reblocking).
+  The primary input, `meas_db`, is a python object that represents
+  the raw QMC energy measurements in HDF5 format, which is of one of
+  these classes:
 
-  The data loading to memory can be blocked to save memory.
-  Use `blksize` parameter for that purpose; then only that number of rows
+      pyqmc.results.gafqmc_meas.meas_hdf5
+      pyqmc.results.pwqmc_meas.meas_hdf5
+
+  If the data is from free projection run,m then set `free_proj` to True.
+  Otherwise, it is assumed to be a phaseless-constrained run.
+
+  In this analysis, the records (which can be thought roughly as
+  a two-dimensional array of energy values, where the two axes are
+  the imaginary time and walker (a.k.a. population) axes.
+
+  The dataset is reblocked in imaginary-time axis in the usual manner:
+  by giving the sequence of block sizes in `tblksizes` input (1-D) array.
+  The dataset is reblocked in walker (population) axis in a different way:
+  we divide up the measurement data into several roughly equal partitions;
+  the partition sizes to use is given in the `pblkcounts` input (1-D) array.
+  Because the number of walkers fluctuates during the simulation,
+  the length in the population axis is not fixed, thus the equal partitioning
+  is an approximation.
+
+  NOTE: The pop-axis reblocking is slightly different from reblock_meas()
+  in Kpt-MnO-AFM2.py because instead of "throwing out" excess data which
+  do not make it when we "rectangularly" reshape the array, we include
+  all of them by allowing some of the partition to be slightly larger
+  (excess by 1 walker from the other).
+  Statistically in the limit of very large number of walkers, the two should
+  be equal.
+
+  The loading of the measurement data into memory can be blocked
+  to conserve memory usage during the processing.
+  Use `blksize` parameter for that purpose; then only `blksize` number of rows
   are loaded at a time.
   If `blksize` is a literal string 'block', then the data will be loaded
   block-by-block, as defined in QMC measurement block.
@@ -53,9 +96,26 @@ def h5meas_reblk(meas_db, free_proj=False,
     1 == growth,
     2 == measurement phase
 
-  NOTE: The pop-axis reblocking is slightly different from reblock_meas()
-  in Kpt-MnO-AFM2.py because instead of "rounding in" excess data which
-  do not make it when we "rectangularly" reshape the array.
+  There are several built-in measurement data preprocessing methods
+  that can be applied right after the data is read from the file but
+  before the block-averaging is done. This is determined by the string
+  value of `pop_pre` argument, which can be one of these:
+
+    'none' or 'contiguous'
+    'shuffle'
+    'coherent-shuffle'
+    'buggy-contiguous'  (not recommended; can be problematic)
+    'buggy-transpose'   (not recommended; can be problematic)
+
+  For shuffle operations, the `rng` argument can be given (and is like
+  the numpy-style `numpy.random.RandomState` RNG object) so the shuffle
+  order is reproducible. This is the recommended approach.
+
+
+  DINOSAUR TRACKS
+
+  Please do not use arguments `reblk_save_logs` and `reblk_log_root_dir`.
+
   """
   from sys import stderr
   from itertools import product
@@ -65,7 +125,7 @@ def h5meas_reblk(meas_db, free_proj=False,
   from pyqmc.stats.check_reblocking import \
     weighted_samples, reblocking_result, \
     reblock_sizes
-  from reblocking import Reblock_contiguous, Reblock_interleaving, Reblock_shuffled
+  #from reblocking import Reblock_contiguous, Reblock_interleaving, Reblock_shuffled
   global ws
 
   def dbg(lvl, msg):
@@ -222,7 +282,7 @@ def h5meas_reblk(meas_db, free_proj=False,
     match_params['start'] += match_params['skip']
     match_params['stop'] += match_params['skip']
 
-    # Don't quite too early or else we will skip real data
+    # Don't quit too early or else we will skip real data
     if N_meas == 0:
       continue
 
@@ -346,6 +406,33 @@ def h5meas_dump_reblk_raw_data(blk):
 def h5meas_dump_reblk_stats(blk, fn):
   """Dumps the reblocking statistics in a text table format.
   Input `blk' object is the output of h5meas_reblk routine.
+  The output is like this:
+
+      #tblk   pblk           mean_g            err_g            mean_b            err_b              w_tot tbsz            mean_jk           err_jk
+         25      1  -8092.438212090      0.003446285   -8092.437398380      0.003932366    77093.632027542    2    -8092.438213362      0.003502350
+         10      1  -8092.438212090      0.003178238   -8092.437240991      0.003409631    77093.632027542    5    -8092.438220600      0.003732636
+          5      1  -8092.438212090      0.003726210   -8092.437043970      0.004222428    77093.632027542   10    -8092.438238199      0.004836244
+     ...
+
+  The fields are:
+
+    tblk: number of blocks in the imaginary-time axis
+
+    tbsz: list of the number of blocks in the imaginary-time axis
+
+    pblk: size of each block in the imaginary-time axis (or,
+        the number of time slices averaged for reblocking along time axis)
+
+    mean_g, err_g: the 'grand' weighted statistics mean and (biased) error estimate
+
+    mean_b, err_b: the unweighted statistics mean and error estimate
+        (sometimes called 'block average'--i.e. plain averaging
+        of the reblocked data),
+
+    mean_jk, err_jk: mean and error restimate from the delete-1 jackknife procedure.
+
+    w_tot: total weight of all the raw data points accounted
+        in the reblocking process.
   """
 
   from wpylib.iofmt.text_output import text_output
@@ -370,7 +457,9 @@ def h5meas_dump_reblk_stats(blk, fn):
     # biased sample variance
     Xg_var_biased = sum(rblk['w'] * (X_ds - Xg)**2) / wtot
     #Xg_var_unbiased =
+    # biased error estimate of the "grand" average
     Xg_err_biased = sqrt(Xg_var_biased / (ndata))
+    # FIXME: Add also unbiased error estimate
     # poor but simplest attempt to reduce bias in var estimate above:
     Xg_err_unbiased1 = sqrt(Xg_var_biased / (ndata-1))
     # unweighted statistics: block average, standard error of the blk avg
