@@ -209,8 +209,8 @@ class nwchem_output(result_base):
       (regex(r'^\s*atoms\s*=\s*([0-9]+)\s*$'),                             'natoms', int),
       (regex(r'^\s*closed shells\s*=\s*([0-9]+)\s*$'),                     'nclosed_shells', int),
       (regex(r'^\s*open shells\s*=\s*([0-9]+)\s*$'),                       'nopen_shells', int),
-      (regex(r'^\s*alpha electrons\s*=\s*([0-9]+)\s*$'),                   'nalpha_elec', int),
-      (regex(r'^\s*beta electrons\s*=\s*([0-9]+)\s*$'),                    'nbeta_elec', int),
+      (regex(r'^\s*alpha\s+electrons\s*=\s*([0-9]+)\s*$'),                   'nalpha_elec', int),
+      (regex(r'^\s*beta\s+electrons\s*=\s*([0-9]+)\s*$'),                    'nbeta_elec', int),
       (regex(r'^\s*charge\s*=\s*([0-9]+)\s*$'),                            'charge', int),
       (regex(r'^\s*wavefunction\s*=\s*([0-9]+)\s*$'),                      'scf_type', int),
     ]
