@@ -71,8 +71,15 @@ class gafqmc_info(result_base):
       if len(flds) == 0:
         continue
       elif Ls.startswith("Number of particles:"):
-        rslt["nup"] = int(flds[3])
-        rslt["ndn"] = int(flds[4])
+        # Add special exception for silly Cray fortran output:
+        if flds[3].startswith('2*'): # Cray
+          rslt["nup"] = rslt["ndn"] = int(flds[3][2:])
+        elif flds[3].endswith(','): # Cray
+          rslt["nup"] = int(flds[3].rstrip(','))
+          rslt["ndn"] = int(flds[4].rstrip(','))
+        else:
+          rslt["nup"] = int(flds[3])
+          rslt["ndn"] = int(flds[4])
       elif Ls.startswith("Majority and minority det are independent"):
         rslt["udet"] = True
       elif Ls.startswith("Majority and minority det are coupled"):
