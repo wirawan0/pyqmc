@@ -24,6 +24,7 @@ from wpylib.sugar import is_iterable
 LITERATURE_TRACEBACK = """
 Literature traceback:
 
+
 * JCP.98.7059(1993)
   "The use of systematic sequences of wave functions for estimating the
   complete basis set, full configuration interaction limit in water"
@@ -42,12 +43,30 @@ Literature traceback:
 
       NOTE: This is the best example of paper using exp ansatz for HF
       CBS and 1/x^3 for correlation energy CBS.
+      The exponential ansatz for SCF is attributed to Feller.
+
+* CPL.286.243(1998)
+  "Basis-set convergence in correlated calculations on Ne, N2, and H2O"
+  Asger Halkier, Trygve Helgaker, Poul Jorgensen, Wim Klopper,
+  Henrik Koch, Jeppe Olsen, Angela K. Wilson
+
+  Oft-quoted in CCL mailing list for basis set extrapolation.
+  But this paper discusses only the correlation energy extrapolation.
 
 * JCP.108.154(1998)
   "An examination of intrinsic errors in electronic structure methods using
   the Environmental Molecular Sciences Laboratory computational results
   database and the Gaussian-2 set"
   Eq. 1
+
+
+* CPL.302.437(1999)
+  http://dx.doi.org/10.1016/S0009-2614(99)00179-7
+  "Basis-set convergence of the energy in molecular Hartree-Fock calculations"
+  Asger Halkier, Trygve Helgaker, Poul Jorgensen, Wim Klopper, Jeppe Olsen
+
+  The original paper that proposed 2-point exponential-form
+  CBS extrapolation of HF energies using c=1.63.
 
 """
 
@@ -163,8 +182,80 @@ def extrap_cbs_hf(E, X=None):
   else:
     # ...otherwise, assume it is an array-like object
     X = numpy.array(X, dtype=float)
+  assert len(X) == len(E)
   rslt = DefObject().extrap(x=X, y=E)
   return rslt
+
+
+""" --- Special two-value extrapolation for SCF energies ---
+
+Example cases for Cr2 system (cc-pwCV[TQ5]Z-DK basis, RHF calculations):
+see the analysis script, routine "examine_cbs_extrap_hf_20140728dset".
+
+      E(X) = E_CBS + b * exp(-c*X)
+
+                                                  -----------TQ5 fitting------------  -----------TQ fitting------------   -----------Q5 fitting------------
+  rbond       E(TZ)       E(QZ)       E(5Z)       E_CBS       b           c           E_CBS       b           c           E_CBS       b           c
+[ 1.5         0.69512178  0.69308933  0.69279279  0.69274213  0.76617248  1.92481764  0.69259408  0.33606784  1.63        0.69272053  0.25025876  1.63      ]
+[ 1.55        0.70816632  0.7062469   0.70596556  0.70591724  0.71422788  1.92022707  0.70577919  0.31737792  1.63        0.70589701  0.23742841  1.63      ]
+[ 1.6         0.72742565  0.72562349  0.72536297  0.72531894  0.69730714  1.93403249  0.72518436  0.29798789  1.63        0.72529948  0.21986646  1.63      ]
+[ 1.6788      0.76579848  0.76423025  0.76397932  0.76393152  0.45569801  1.83250528  0.76384812  0.25930761  1.63        0.76391817  0.2117719   1.63      ]
+[ 1.72        0.78832241  0.78686859  0.78661728  0.78656476  0.34028485  1.75526937  0.78651433  0.24038967  1.63        0.78655604  0.21208601  1.63      ]
+[ 1.8         0.83472349  0.83346358  0.83321471  0.83315345  0.20370973  1.62186525  0.83315658  0.20832682  1.63        0.83315407  0.21002842  1.63      ]
+[ 1.9         0.89488983  0.89380091  0.89355081  0.89347624  0.11666741  1.47106338  0.89353557  0.18005363  1.63        0.89348987  0.21107033  1.63      ]
+[ 2.          0.95510086  0.95409784  0.95385247  0.95377301  0.09070589  1.40802156  0.95385343  0.16584983  1.63        0.95379268  0.20707089  1.63      ]
+[ 2.4         1.1743032   1.1735533   1.17337398  1.17331762  0.0720804   1.43076928  1.17337057  0.12399692  1.63        1.17333028  0.15133372  1.63      ]
+[ 3.          1.41304031  1.41267073  1.41256334  1.41251936  0.02123703  1.23594681  1.41258067  0.06111124  1.63        1.41253718  0.09062671  1.63      ]
+[ 3.4         1.52227844  1.52177003  1.52176614  1.52176611  1.1496332e3 4.87458243  1.52164614  8.406640e-2 1.63        1.52176520  3.277315e-3 1.63      ]
+
+The error E(CBS,TQ5) - E(CBS,TQ) seems to be small enough for our purpose.
+
+"""
+
+def extrap_cbs_hf_2pt(E, X=None, c=1.63):
+  """Two-point CBS extrapolation for HF energy,
+  according to
+
+      E(X) = E_CBS + b * exp(-c*X)
+
+  where only 2 values of X and E are available each.
+  In psi4, for the Helgaker's two-parameter exponential ansatz,
+  c is chosen to be 1.63.
+  Let the X values be X1 and X2, where X2 = X1+1.
+
+      E1 = E_CBS + b * exp(-c*X1)
+      E2 = E_CBS + b * exp(-c*X1) * exp(-c)
+
+      E1 - E2 = b * exp(-c*X1) (1 - exp(-c))
+
+      b = (E1 - E2) / (exp(-c*X1) (1 - exp(-c)))
+
+  Source: http://dx.doi.org/10.1016/S0009-2614(99)00179-7
+  """
+  from numpy import exp
+  if X == None:
+    X = numpy.arange(3, 3 + len(E), dtype=float)
+  elif numpy.isscalar(X) and numpy.isreal(X):
+    # ...if it is a numerical value
+    X = numpy.arange(X, X + len(E), dtype=float)
+  else:
+    # ...otherwise, assume it is an array-like object
+    X = numpy.array(X, dtype=float)
+
+  assert len(X) == 2
+  assert len(E) == len(X)
+
+  X1, X2 = X
+  assert abs(X1 - X2) == 1
+  assert c > 0
+  if X1 < X2:
+    E1, E2 = E
+  else:
+    X2, X1 = X
+    E2, E1 = E
+  b = (E1 - E2) / (exp(-c*X1) * (1 - exp(-c)))
+  E_CBS = E1 - b * exp(-c*X1)
+  return E_CBS, b, c
 
 
 
