@@ -185,7 +185,9 @@ class GTOBasis(object):
     """Outputs the basis definition in mpqc input format.
     The argument indent can be an integer (how many whitespaces added for
     indentation or a string."""
-    specname = specname or self.species
+    from pyqmc.physics.atoms import get as get_atom_rec
+    full_species_name = get_atom_rec(self.species).name()
+    specname = specname or full_species_name
     basisname = basisname or self.basisname
     if isinstance(indent,int) and indent >= 0: indent = " " * indent
 
