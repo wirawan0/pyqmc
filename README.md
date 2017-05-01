@@ -35,13 +35,13 @@ The goal of this tool:
   research.
   Researchers write their research procedure as high-level scripts,
   that can be used by others to reproduce their research, or further
-  their worn.
+  their work.
   
 
 
 ## Author
 
-Wirawan Purwanto <wirawan0 at gmail.com> .
+Wirawan Purwanto, `wirawan0 at gmail.com` .
 
 This library was a byproduct of my research activity at
 the College of William and Mary,
