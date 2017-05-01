@@ -51,3 +51,8 @@ Department of Energy, and Office of Naval Research.
 WP would like to thank Dr. Henry Krakauer and Dr. Shiwei Zhang at the
 College of William and Mary for allowing me to release this library to
 the public.
+
+This tool is released with a liberal software license (Apache 2.0) in
+order to allow other researchers to pick and reuse the tools that I
+have made for their own use.
+Contributions back to the toolbox are welcome and strongly encouraged.
